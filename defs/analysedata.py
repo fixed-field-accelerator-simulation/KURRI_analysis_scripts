@@ -7,13 +7,16 @@ import numpy
 
 #DAVID'S READSCOPE FUNCTION
 def read_scope(dirname, filename):
+    """Read scope data. The script deals with two specific scope formats - 
+    that used in November 2013, and in March 2014. The two are distinguished by looking
+    for the string DP04104 that appears in the later case"""
+    
     filepath = dirname + filename
     print 'reading ', filepath
-    
-    
+
     f_data = open(filepath, 'r')
     n = 0
-    xdat = []
+    tdat = []
     ydat = []
     
     for line in f_data:
@@ -32,28 +35,18 @@ def read_scope(dirname, filename):
                 yi = 4
 
         if n > nskip:
-
             if line !='\r\n':
-
-                xdat.append(float(timeandamp[xi]))
+                tdat.append(float(timeandamp[xi]))
                 ydat.append(float(timeandamp[yi]))
             else:
                 break
-            #scope_ch2.append( (float(timeandamp[3]), float(timeandamp[4])) )
             
         n += 1
-        
-
-            
 
     f_data.close()
-    # check
-    #f_data_w = open('check_ch2', 'w')
-    #for i in range(1,len(scope_ch2)):
-     #   f_data_w.write('%13.6e %13.6e\n' % (scope_ch2[i][0], scope_ch2[i][1]))
-    #f_data_w.close()
+
     
-    return xdat, ydat
+    return tdat, ydat
 
 #DAVIDS HIGHPASS FILTER FUNCTION added 26/3/14
 def highpass(signal,dt,RC):
