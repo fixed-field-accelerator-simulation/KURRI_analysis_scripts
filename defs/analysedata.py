@@ -3,7 +3,9 @@ import matplotlib
 #matplotlib.rcParams['font.family'] = 'serif'
 #matplotlib.rcParams['legend.fontsize']=12
 from pylab import *
-import numpy
+import numpy as np
+import os
+
 
 #DAVID'S READSCOPE FUNCTION
 def read_scope(dirname, filename):
@@ -116,7 +118,7 @@ def getpeaks(rawdata,revfreq, startindex=0,endindex=10000):
 		peak=abs(rawdata[si:index]).max()
 		pmax.append(peak)
 		print peak
-		ppos.append(si+ numpy.where(abs(rawdata[si:index])==peak)[0][0])
+		ppos.append(si+ np.where(abs(rawdata[si:index])==peak)[0][0])
 		si=si+step
 		index=index+step
 
@@ -125,13 +127,13 @@ def getpeaks(rawdata,revfreq, startindex=0,endindex=10000):
 
 def perform_fft(data, plotswitch=0, plotname="fft_spectrum.png"):
 	"""Performs a basic FFT and returns the dominant frequency in the data and the freq. vs power spectrum data"""
-	t=numpy.arange(len(data))
-	Y = numpy.fft.fft(data)
+	t=np.arange(len(data))
+	Y = np.fft.fft(data)
 	n=len(Y)
 	power = abs(Y[1:(n/2)])**2
 	nyquist=1./2
 
-	freq=numpy.array(range(n/2))/(n/2.0)*nyquist
+	freq=np.array(range(n/2))/(n/2.0)*nyquist
 
 	if plotswitch==1:
 		plot(freq[:len(power)], power, '-')
@@ -141,7 +143,7 @@ def perform_fft(data, plotswitch=0, plotname="fft_spectrum.png"):
 		savefig(plotname)
 		clf()
 
-	maxindex=numpy.where(power==power.max())[0][0]
+	maxindex=np.where(power==power.max())[0][0]
 	print "Max. frequency in spectrum: ", freq[maxindex+1]
 	return freq[maxindex+1], freq[:len(power)], power
 
@@ -151,7 +153,7 @@ def smoothListGaussian(list,degree=5):
 
 	window=degree*2-1  
 
-	weight=numpy.array([1.0]*window)  
+	weight=np.array([1.0]*window)  
 
 	weightGauss=[]	
 
@@ -161,17 +163,17 @@ def smoothListGaussian(list,degree=5):
 
 		frac=i/float(window)  
 
-		gauss=1/(numpy.exp((4*(frac))**2))	
+		gauss=1/(np.exp((4*(frac))**2))	
 
 		weightGauss.append(gauss)  
 
-	weight=numpy.array(weightGauss)*weight	
+	weight=np.array(weightGauss)*weight	
 
 	smoothed=[0.0]*(len(list)-window)  
 	
 	for i in range(len(smoothed)):	
 
-		smoothed[i]=sum(numpy.array(list[i:i+window])*weight)/sum(weight)  
+		smoothed[i]=sum(np.array(list[i:i+window])*weight)/sum(weight)  
 
 	return smoothed
 
@@ -185,11 +187,11 @@ def smoothListTriangle(list,strippedXs=False,degree=5):
 
 	for x in range(1,2*degree):weight.append(degree-abs(degree-x))	
 
-	w=numpy.array(weight)  
+	w=np.array(weight)  
 
 	for i in range(len(smoothed)):	
 
-		smoothed[i]=sum(numpy.array(list[i:i+window])*w)/float(sum(w))	
+		smoothed[i]=sum(np.array(list[i:i+window])*w)/float(sum(w))	
 
 	return smoothed 
 
@@ -205,7 +207,7 @@ def peakfinder(data, thresh=2.5):
 	print 'total peaks found: ', len(c)
 	print 'threshold: ', threshold
 	# Next remove maxima from the list if they fall below the threshold of 2.5*mean & print how many 'peaks'
-	c_keep = numpy.delete(c, ravel(where(data[c]<threshold)))
+	c_keep = np.delete(c, ravel(where(data[c]<threshold)))
 	print 'peaks found above threshold: ',len(c_keep)
 	return c_keep
 
@@ -220,7 +222,7 @@ def extremumfinder(data, thresh=2.5):
 	threshold = thresh*mean(data)
 	print 'threshold: ', threshold
 	# Next remove maxima from the list if they fall below the threshold of 2.5*mean & print how many 'peaks'
-	c_keep = numpy.delete(c, ravel(where(abs(data[c])<threshold)))
+	c_keep = np.delete(c, ravel(where(abs(data[c])<threshold)))
 	print 'peaks found: ',len(c_keep)
 	return c_keep
 
@@ -241,7 +243,7 @@ def makeplot(ffile, pfile):
 
 	fig=figure(num=1, figsize=(6.5, 10.5), dpi=150, facecolor='w', edgecolor='k')		
 	if len(errs)==len(yax):
-		errorbar(numpy.array(xax), numpy.array(yax), yerr=numpy.array(errs), fmt='bo-')
+		errorbar(np.array(xax), np.array(yax), yerr=np.array(errs), fmt='bo-')
 	else:
 		plot(xax, yax, 'k.-')
 	#ylim(0,0.5)
