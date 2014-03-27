@@ -58,7 +58,22 @@ def highpass(signal,dt,RC):
 	return y
 
 #DAVIDS FUNCTION TO GET ALL THE DATA FILES IN A DIRECTORY
-
+def get_files(directory, file_type):
+	""" return files of type file_type in directory"""
+	
+	if not os.path.exists(directory):
+		print "directory ",directory, "not found"
+		sys.exit()
+	
+	listf = os.listdir(directory)
+	
+	files = []
+	for file1 in listf:
+		if file1[0] != '.':
+			if file_type in file1:
+				files.append(file1)
+	
+	return files
  
 #SUZIE'S ANALYSIS FUNCTIONS
 def readcsv_old(fname, nsamples=100000):
