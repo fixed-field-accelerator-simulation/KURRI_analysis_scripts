@@ -59,7 +59,7 @@ def highpass(signal,dt,RC):
 		y.append(alpha*y[i-1] + alpha*(signal[i] - signal[i-1]))
 	return y
 
-#DAVIDS FUNCTION TO GET ALL THE DATA FILES IN A DIRECTORY
+
 def get_files(directory, file_type):
 	""" return files of type file_type in directory"""
 	
@@ -76,7 +76,70 @@ def get_files(directory, file_type):
 				files.append(file1)
 	
 	return files
- 
+
+
+def select_filenames(directory, indices_select, channel_id):
+	"""Select channel files according to indices"""
+	
+	ch_files_list = []
+	for cid in channel_id:
+		f = get_files(directory, cid)
+		if f !=[]:
+			if indices_select:
+				fsel = [f[i] for i in indices_select] 
+			else:
+				fsel = list(f)
+			ch_files_list.append(fsel)
+		else:
+			ch_files_list.append([])
+
+	return ch_files_list
+
+
+def signal_loss_time(tdat,data, method, cut_off_freq = 0.5e6, threshold_volts = 0.05, sigtonoise = 10):
+	"""Find time of last signal.  
+	The low frequency component is first removed using a high pass filter (below cut_off_freq).
+	
+	method can be "fixed" in which case the latest time with voltage at threshold_volts is found
+	or "noise" in which case the latest time with voltage sigtonoise times the rms of the noise calculated
+	in the last 100 points (where the script assumes no signal)"""
+	
+	#parameters for filter
+	dt = tdat[1] - tdat[0]
+	RC = 1/(2*np.pi*cut_off_freq)
+	
+	#apply high pass filter
+	filter_chf = highpass(data,dt,RC)
+
+	if method == 'fixed':
+		threshold = threshold_volts
+	elif method == 'noise':
+		noise_level = np.std(filter_chf[-100:])
+		threshold = sigtonoise*noise_level
+	
+	for y in reversed(filter_chf):
+		if abs(y) > threshold:
+			loss_time = tdat[filter_chf.index(y)]
+			break
+	
+	show_result = False
+	if show_result:		
+		print "loss_time ",loss_time
+		fft_orig = np.fft.fft(data_chf)
+		fft_filter = np.fft.fft(filter_chf)
+			
+		plt.subplot(211)
+		plt.plot(fft_orig,'k-')
+		plt.plot(fft_filter,'r-')
+		plt.subplot(212)
+		plt.plot(tdat_chf, data_chf)
+		plt.plot(tdat_chf, filter_chf)
+		plt.axvline(x=loss_time)
+		plt.show()
+	
+	return loss_time
+	
+		
 #SUZIE'S ANALYSIS FUNCTIONS
 def readcsv_old(fname, nsamples=100000):
 	"""csv files from the oscilloscope that was used in Nov 13"""
