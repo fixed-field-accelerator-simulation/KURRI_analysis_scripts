@@ -122,21 +122,6 @@ def signal_loss_time(tdat,data, method, cut_off_freq = 0.5e6, threshold_volts = 
 			loss_time = tdat[filter_chf.index(y)]
 			break
 	
-	show_result = False
-	if show_result:		
-		print "loss_time ",loss_time
-		fft_orig = np.fft.fft(data_chf)
-		fft_filter = np.fft.fft(filter_chf)
-			
-		plt.subplot(211)
-		plt.plot(fft_orig,'k-')
-		plt.plot(fft_filter,'r-')
-		plt.subplot(212)
-		plt.plot(tdat_chf, data_chf)
-		plt.plot(tdat_chf, filter_chf)
-		plt.axvline(x=loss_time)
-		plt.show()
-	
 	return loss_time
 	
 		
