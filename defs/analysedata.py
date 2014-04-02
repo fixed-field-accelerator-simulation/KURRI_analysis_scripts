@@ -274,7 +274,7 @@ def extremumfinder(data, thresh=2.5):
 	print 'peaks found: ',len(c_keep)
 	return c_keep
 
-def makeplot(ffile, pfile):	   
+def makeplot(ffile, pfile):
 	"""JUST MAKES A PLOT EITHER WITH TWO COLUMNS OF DATA, OR A THIRD REPRESENTING YERR VALUES
 	0 = timebase
 	1 = volt"""
