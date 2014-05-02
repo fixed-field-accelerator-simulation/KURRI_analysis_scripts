@@ -166,7 +166,7 @@ def findtfromR(tvals, rvals):
 def findFfromt(tvals, fvals):
     '''do a polynomial fit to find f as a function of t from set of datapoints'''
     ffit = np.polyfit(tvals,fvals,5)
-    #make a polynomial that gives the t value for any r value
+    #make a polynomial that gives the f value for any r value
     fpoly = np.poly1d(ffit)
     return fpoly
     
@@ -177,7 +177,7 @@ def findPfromt(pvals, tvals):
     return usepoly
     
 def findEfromt(tvals, Evals):
-    '''do a polynomial fit to find momentum as a function of t from set of datapoints'''
+    '''do a polynomial fit to find energy as a function of t from set of datapoints'''
     Efit = np.polyfit(tvals,Evals,5)
     usepoly = np.poly1d(Efit)
     return usepoly
@@ -209,6 +209,8 @@ def readcsv_old(fname, nsamples=100000):
     return time, volts
 
 def readcsv(fname, nsamples=100000):
+    time=[]
+    volts=[]
     dat=csv2rec(fname, skiprows=17)
         
     for it in range(nsamples):

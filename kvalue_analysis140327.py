@@ -64,7 +64,7 @@ probenames=["F1","F5","F7"]
 proberadius=4180.0 #mm
 kvalue=7.6
 
-fig=figure(num=1, figsize=(6.5, 10.5), dpi=150, facecolor='w', edgecolor='k')   
+fig=figure(num=1, figsize=(10.5, 6.5), dpi=150, facecolor='w', edgecolor='k')   
 
 #Lookup table of time, frequency and estimated energy (based on RF settings file)
 rffile="SimulatedVariableK.dat"

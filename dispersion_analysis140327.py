@@ -45,7 +45,6 @@ def calcDispersion(pvals, rvals):
     #dispersion = dr/(dp/p)
     return disp, dpp_array
 
-
 if __name__ == "__main__":
     '''This analysis code needs updating/checking!!!'''
 
