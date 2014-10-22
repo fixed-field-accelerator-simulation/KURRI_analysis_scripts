@@ -1,8 +1,9 @@
 #!/usr/bin/python
 import matplotlib
-#matplotlib.rcParams['font.family'] = 'serif'
-#matplotlib.rcParams['legend.fontsize']=12
+matplotlib.rcParams['font.family'] = 'serif'
+matplotlib.rcParams['legend.fontsize']=12
 from pylab import *
+from scipy import interpolate
 import numpy as np
 import os
 
@@ -59,7 +60,92 @@ def highpass(signal,dt,RC):
         y.append(alpha*y[i-1] + alpha*(signal[i] - signal[i-1]))
     return y
 
+#DAVIDS PEAK FINDING ALGORITHM ADDED 15/5/2014
+def find_peaks(xdat, ydat, interval, find_hminus):
+    
+    pmxi = []
+    pmx = []
+    pmy = []
+    pmi = []
+    
 
+    for i in range(int(len(xdat)/interval) + 10):
+
+        my = 0.
+        my_min = 100
+        
+        winsize = int(0.5*interval)
+        
+
+            
+        if i == 0 :
+            istart = 0
+            xwindow = xdat[:2*winsize]
+            ywindow = ydat[:2*winsize]
+        elif i == 1:
+            istart = 2*winsize
+            xwindow = xdat[2*winsize:4*winsize]
+            ywindow = ydat[2*winsize:4*winsize]       
+        else:
+            icen = mi + interval
+
+            #test if in range
+            if icen + winsize > len(xdat):
+                print "reach end of data ",icen+winsize, len(xdat)
+                break
+            
+            xwindow = xdat[icen-winsize: icen+winsize]
+            ywindow = ydat[icen-winsize: icen+winsize]
+            
+
+            istart = icen - winsize
+        
+
+            
+        for xd,yd in zip(xwindow, ywindow):
+            #look for positive H- peak
+            if i == 0 and find_hminus:
+                if yd > my:
+                    mx = xd
+                    my = yd
+                    mi = ywindow.index(yd) + istart
+            else:
+            #look for negative proton peak
+                if yd < my:
+                    mx = xd
+                    my = yd
+                    mi = ywindow.index(yd) + istart
+        
+        
+                
+        if i >= 10 and i <= 5:
+        #if xwindow[0] > 88 and xwindow[0] < 100:
+            #plt.plot(xdat[i*interval:(i+1)*interval],ydat[i*interval:(i+1)*interval])
+            
+            plt.plot(xwindow,ywindow)
+            plt.axvline(x=mx)
+            plt.show()
+            
+
+
+            
+        pmxi.append(i)
+        pmx.append(mx)
+        pmy.append(my)
+        pmi.append(mi)
+        
+        #if i > 0:
+        #    xgap = pmx[-1] - pmx[-2]
+        #    print "xgap ",xgap, xgap/0.008
+        #    
+        #    lastpeaki = mi
+
+            
+            
+    
+    return pmxi, pmx, pmy, pmi
+    
+    
 def get_files(directory, file_type):
     """ return files of type file_type in directory"""
     
@@ -149,15 +235,20 @@ def plotset(dirname, setname):
 
 def findRfromt(rvals, tvals):
     '''do a polynomial fit to find R as a function of t from set of datapoints'''
-    rfit = np.polyfit(tvals,rvals,4)
+    rfit = np.polyfit(tvals,rvals,5)
     #r=t/a-b/a
     #make a polynomial that gives the r value for any t value
     rpoly = np.poly1d(rfit)
     return rpoly
     
+def findyfromx_spline(yvals, xvals):
+    '''do a cubic spline fit to find y as a function of x from set of datapoints'''
+    yfit = interpolate.splrep(xvals, yvals, s=0)
+    return yfit
+    
 def findtfromR(tvals, rvals):
     '''do a polynomial fit to find t as a function of R from set of datapoints'''
-    tfit = np.polyfit(rvals,tvals,4)
+    tfit = np.polyfit(rvals,tvals,5)
     #r=t/a-b/a
     #make a polynomial that gives the t value for any r value
     tpoly = np.poly1d(tfit)
@@ -172,7 +263,7 @@ def findFfromt(tvals, fvals):
     
 def findPfromt(pvals, tvals):
     '''do a polynomial fit to find momentum as a function of t from set of datapoints'''
-    pfit = np.polyfit(pvals,tvals,3)
+    pfit = np.polyfit(pvals,tvals,5)
     usepoly = np.poly1d(pfit)
     return usepoly
     
@@ -183,7 +274,7 @@ def findEfromt(tvals, Evals):
     return usepoly
     
 def findPfromR(rvals, pvals):
-    pfit = np.polyfit(pvals,rvals,3)
+    pfit = np.polyfit(pvals,rvals,5)
     usepoly = np.poly1d(pfit)
     return usepoly
     
@@ -193,13 +284,21 @@ def ke_to_mom(pmass, kenergy):
     mom=math.sqrt(pow(te,2) - pow(pmass,2))
     return mom
     
+def mom_to_ke(pmass, mom):
+    '''Convert momentum to kinetic energy'''
+    te=math.sqrt(pow(mom,2)+pow(pmass,2))
+    kenergy=te-pmass
+    #print "mom: ",mom, "te: ",te, "ke: ", kenergy
+    return kenergy
+    
 def readcsv_old(fname, nsamples=100000):
     """csv files from the oscilloscope that was used in Nov 13"""
     
     time=[]
     volts=[]
 
-    dat = csv2rec(fname)
+    dat = csv2rec(fname, skiprows=6)
+    print 'read data from ', fname
 
     for it in range(nsamples):
         time.append(float(dat[it][3]))
@@ -219,6 +318,7 @@ def readcsv(fname, nsamples=100000):
 
     print len(time)  
     return time, volts
+
 
 
 def getpeaks(rawdata,revfreq, startindex=0,endindex=10000):
@@ -319,8 +419,8 @@ def peakfinder(data, thresh=2.5):
     Find the array indices where that is 'True' and add one"""
 
     c = (diff(sign(diff(data))) < 0).nonzero()[0] + 1 # local max
-    #threshold = thresh*mean(data)
-    threshold=thresh
+    threshold = thresh*mean(data)
+    #threshold=thresh
     print 'total peaks found: ', len(c)
     print 'threshold: ', threshold
     # Next remove maxima from the list if they fall below the threshold of 2.5*mean & print how many 'peaks'
@@ -358,7 +458,7 @@ def makeplot(ffile, pfile):
         if len(line)>2:
             errs.append(float(line[2]))
 
-    fig=figure(num=1, figsize=(6.5, 10.5), dpi=150, facecolor='w', edgecolor='k')       
+    fig=figure(num=1, figsize=(6.5, 6.5), dpi=150, facecolor='w', edgecolor='k')       
     if len(errs)==len(yax):
         errorbar(np.array(xax), np.array(yax), yerr=np.array(errs), fmt='bo-')
     else:
@@ -367,7 +467,7 @@ def makeplot(ffile, pfile):
     #xlabel(r'x [mm]', size=12)
     #ylabel(r'z [mm]',size=12)
     savefig(pfile)
-
+    clf()
 
 
 
