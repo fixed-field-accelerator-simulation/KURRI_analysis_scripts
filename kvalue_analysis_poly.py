@@ -61,7 +61,7 @@ radial_values=[]
 time_values=[]
 
 probenames=["F1","F5","F7"]
-proberadius=4180.0 #mm
+proberadius=4300.0 #mm
 kvalue=7.6
 
 fig=figure(num=1, figsize=(10.5, 6.5), dpi=150, facecolor='w', edgecolor='k')   
@@ -82,7 +82,7 @@ rfdat_p=map(lambda x: ke_to_mom(mass, x), rfdat_E)
 kresult=[]
 toffset= -93.3 # musec timing offset from 31/3/14 data
 
-fig=figure(num=3, figsize=(6, 15), dpi=150, facecolor='w', edgecolor='k')
+fig=figure(num=3, figsize=(6, 10), dpi=150, facecolor='w', edgecolor='k')
 
 smoothed_data=False
 for probe in range(len(probenames)):
