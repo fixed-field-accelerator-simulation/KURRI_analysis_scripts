@@ -233,9 +233,9 @@ def plotset(dirname, setname):
         plot(dat[0], dat[1], '.-',label=setname[i])
 
 
-def findRfromt(rvals, tvals):
+def findRfromt(rvals, tvals, order=5):
     '''do a polynomial fit to find R as a function of t from set of datapoints'''
-    rfit = np.polyfit(tvals,rvals,5)
+    rfit = np.polyfit(tvals,rvals,order)
     #r=t/a-b/a
     #make a polynomial that gives the r value for any t value
     rpoly = np.poly1d(rfit)
@@ -261,9 +261,9 @@ def findFfromt(tvals, fvals):
     fpoly = np.poly1d(ffit)
     return fpoly
     
-def findPfromt(pvals, tvals):
+def findPfromt(pvals, tvals, order=5):
     '''do a polynomial fit to find momentum as a function of t from set of datapoints'''
-    pfit = np.polyfit(pvals,tvals,5)
+    pfit = np.polyfit(pvals,tvals,order)
     usepoly = np.poly1d(pfit)
     return usepoly
     
