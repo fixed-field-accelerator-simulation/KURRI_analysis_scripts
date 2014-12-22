@@ -500,7 +500,7 @@ def powerlaw_fit(xdata, ydata, yerr):
 
     chisq = np.sum((((ydata - powerlaw(xdata, amp, exponent))/yerr)**2),axis=0)
 
-	return exponent, amp, chisq
+    return exponent, amp, chisq
 
 
 
