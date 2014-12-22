@@ -469,6 +469,38 @@ def makeplot(ffile, pfile):
     savefig(pfile)
     clf()
 
+def powerlaw_fit(xdata, ydata, yerr):
+    # Power-law fitting is best done by first converting
+    # to a linear equation and then fitting to a straight line.
+    #  y = a * x^b
+    #  log(y) = log(a) + b*log(x)
+    from scipy import log10
+    from scipy import optimize
+
+
+    logx = log10(xdata)
+    logy = log10(ydata)
+    logyerr = yerr / ydata
+
+    # define our (line) fitting function
+    fitfunc = lambda p, x: p[0] + p[1] * x
+    errfunc = lambda p, x, y, err: (y - fitfunc(p, x)) / err
+
+    pinit = [1.0, -1.0]
+    out = optimize.leastsq(errfunc, pinit, args=(logx, logy, logyerr), full_output=1)	
+    pfinal = out[0]
+    covar = out[1]
+
+    #y = amp * x^exponent
+    exponent = pfinal[1] #index in original
+    amp = 10.0**pfinal[0]
+    
+    exponentErr = np.sqrt( covar[0][0] )
+    ampErr = np.sqrt( covar[1][1] ) * amp
+
+    chisq = np.sum((((ydata - powerlaw(xdata, amp, exponent))/yerr)**2),axis=0)
+
+	return exponent, amp, chisq
 
 
 
