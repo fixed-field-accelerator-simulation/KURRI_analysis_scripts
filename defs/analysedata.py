@@ -477,6 +477,7 @@ def powerlaw_fit(xdata, ydata, yerr):
     from scipy import log10
     from scipy import optimize
 
+    powerlaw = lambda x, amp, index: amp *np.power(x,index)
 
     logx = log10(xdata)
     logy = log10(ydata)
