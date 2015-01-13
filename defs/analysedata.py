@@ -477,7 +477,7 @@ def powerlaw_fit(xdata, ydata, yerr):
     from scipy import log10
     from scipy import optimize
 
-    powerlaw = lambda x, amp, index: amp *np.power(x,index)
+    powerlaw = lambda x, amp, index: amp*np.power(x,index)
 
     logx = log10(xdata)
     logy = log10(ydata)
@@ -502,6 +502,170 @@ def powerlaw_fit(xdata, ydata, yerr):
     chisq = np.sum((((ydata - powerlaw(xdata, amp, exponent))/yerr)**2),axis=0)
 
     return exponent, amp, chisq
+    
+def rf_convert(rfdir):
+    
+    #Convert the time to an energy then a momentum (based on RF settings file)
+    rffile="SimulatedVariableK.dat"
+    rfdat = np.loadtxt(rfdir+rffile, skiprows=2, usecols=(0,1,2), unpack=True)
+    rfdat_t=np.array(rfdat[0])*1E6
+    rfdat_E=np.array(rfdat[1])*1E-6
+    rfdat_F=np.array(rfdat[2]) #frequency in hertz
 
+    mass=938.272
+    rfdat_p=map(lambda x: ke_to_mom(mass, x), rfdat_E)
+    
+    #toffset=0
+    
+    #make a list of momentum values corresponding to a given set of time points
+    fittedpfunc=findPfromt(rfdat_t,rfdat_p, order=2) #using RF data  
+    
+    return fittedpfunc
+    
+    
+def powerlaw_fit_outlier(pdat, rdat, rerr):
+    """Successively remove initial data points until chi-squared of power law fit is below some threshold
+     Return resulting fit parameters and the modified error array"""
+    for iteration in range(5):
+            
+        if iteration > 0:
+            rerr[iteration - 1] = 1000 #eliminate point near injection
+
+  
+        exponent, amp, chisq = powerlaw_fit(pdat, rdat, rerr)
+            
+        if iteration > 0:
+            #test for convergence
+            if abs(chisq - chisq_prev) <= 5.0:
+                break
+            
+        #store results from this iteration
+        exponent_prev = exponent
+        amp_prev = amp                    
+        chisq_prev = chisq
+            
+    return exponent_prev, amp_prev, chisq_prev, rerr
+        
+        
+def polynomial_fit_outlier(pdat, rdat, order=1, threshold = 1e-5):
+    """Successively remove initial data points until chi-squared of power law fit is below some threshold
+    Return resulting fit parameters and the modified error array"""
+        
+    for iteration in range(5):
+
+        out = np.polyfit(pdat[iteration:], rdat[iteration:], order, full=True)            
+        poly_coef = out[0]
+            
+        poly = np.poly1d(poly_coef)
+            
+        chisq = sum([(poly(p)-r)**2 for p,r in zip(pdat[iteration:], rdat[iteration:])])
+            
+        if iteration >= 0:
+
+            if chisq <= threshold:
+                break
+            
+
+    return poly_coef, chisq_fit, iteration-1
+        
+        
+def fit_qinbin_data(data1, fit_type='powerlaw', plot_fit = False):
+    #Convert R(t) qinbin data to R(p) and fit. 
+    
+    rfdir="/home/pvq65952/accelerators/KURRI_ADS/march14_exp/rf_pattern/"
+    colors = ['k', 'r', 'b']
+    probenames=["F1","F5","F7"]
+    
+    #print "data1 time ",[d[1] for d in data1]
+    toffset= -93.3
+    proberadius=4300.0 #mm 
+    fittedpfunc = rf_convert(rfdir) 
+    
+    pdata_probe = []
+    rdata_probe = []
+    momentum_initial = []
+    exponent_fit_all = []
+    amp_fit_all = []
+    
+    if fit_type == 'powerlaw':
+        powerlaw1 = lambda x, amp, index: amp*np.power(x,index)
+    else:
+        print "polynomial fit part needs fixing!"
+        sys.exit()
+    
+    radii_fit = []
+    momenta_fit = []
+    p_fit_ini = []
+    p_fit_last = []
+    for i_probe in range(len(data1)):
+
+        j=data1[i_probe][0].argsort() #sort by probe position
+        
+        pdata = fittedpfunc(data1[i_probe][1][j]+toffset) #momentum data 
+        rdata = 1e-3*(data1[i_probe][0][j] + proberadius) #position data w.r.t centre
+        
+        #p_ini_fit = fittedpfunc(data1[0][1][0]+toffset)
+        
+        #store data in list
+        rdata_probe.append(rdata)
+        pdata_probe.append(pdata)
+        
+        #fit data
+        if fit_type == 'powerlaw':
+
+            #pnorm = [p/pdata[0] for p in pdata] #p/p0
+            #pnorm = np.array([p/p_ini_fit for p in pdata])
+            radii_err = [1e-3]*len(rdata)
+        
+            momentum_initial.append(pdata[0])
+        
+            exponent_fit, amp_fit, chisq_fit, rerr  = powerlaw_fit_outlier(pdata, rdata, radii_err)
+            exponent_fit_all.append(exponent_fit)
+            amp_fit_all.append(amp_fit)
+            
+            index_fit_first =  next((i for i,v in enumerate(rerr) if v != 1000),0)
+            
+            kfit = (1/exponent_fit) - 1
+            leg_text = probenames[i_probe]+",  k="+str(kfit)[:5] 
+
+        else:
+            poly_coef, chisq, index_fit_first  = polynomial_fit_outlier(pdata, rdata, threshold=1e-4)
+            
+            fittedrvsp = np.poly1d(poly_coef)
+
+            #extract fit parameters
+            a1 = fittedrvsp[1]
+            a2 = fittedrvsp[2]
+
+            drdpfn = np.poly1d([2*a2, a1])
+        
+            drdp_probe = drdpfn(pdata)            
+        
+        p_fit_ini.append(pdata[index_fit_first])
+        p_fit_last.append(pdata[-1])
+
+        if plot_fit:
+
+            
+            if fit_type == 'powerlaw':
+                plot(pdata, powerlaw1(pdata, amp_fit, exponent_fit), color=colors[i_probe],linestyle='--', label=leg_text)
+            else:
+                plot(pdata, fittedrvsp(pdata), '-', color=colors[i_probe], label=probenames[i_probe])
+                
+            plot(pdata, rdata, color=colors[i_probe], marker='o', linestyle='None')#, label=probenames[i_probe]) 
+            
+    if plot_fit:
+        xlabel('p (MeV/c)')
+        ylabel('r (m)')
+        legend(loc="lower right", prop={'size':12})
+        plt.show()
+
+        
+    #common momentum range
+    min_p_com = max(p_fit_ini)
+    max_p_com = min(p_fit_last)
+    
+    return pdata_probe, rdata_probe, exponent_fit_all, amp_fit_all, [min_p_com, max_p_com]
+    
 
 
