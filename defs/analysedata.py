@@ -203,12 +203,16 @@ def signal_loss_time(tdat,data, method, cut_off_freq = 0.5e6, threshold_volts = 
         noise_level = np.std(filter_chf[-100:])
         threshold = sigtonoise*noise_level
     
+    j = 0 
     for y in reversed(filter_chf):
         if abs(y) > threshold:
-            loss_time = tdat[filter_chf.index(y)]
+            loss_time = tdat[len(tdat) - j - 1]
+            index_loss_time = len(tdat) - j - 1
             break
+        j = j + 1
     
-    return loss_time
+    
+    return loss_time, index_loss_time
     
         
 #SUZIE'S ANALYSIS FUNCTIONS
