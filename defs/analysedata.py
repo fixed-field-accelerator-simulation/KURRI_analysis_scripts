@@ -153,6 +153,7 @@ def get_files(directory, file_type):
         sys.exit()
     
     listf = os.listdir(directory)
+    listf.sort()
     
     files = []
     for file1 in listf:
