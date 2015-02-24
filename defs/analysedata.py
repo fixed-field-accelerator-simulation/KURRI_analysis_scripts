@@ -9,7 +9,7 @@ import os
 
 
 #DAVID'S READSCOPE FUNCTION
-def read_scope(dirname, filename):
+def read_scope(dirname, filename, tfactor=1):
     """Read scope data. The script deals with two specific scope formats - 
     that used in November 2013, and in March 2014. The two are distinguished by looking
     for the string DP04104 that appears in the later case"""
@@ -39,7 +39,7 @@ def read_scope(dirname, filename):
 
         if n > nskip:
             if line !='\r\n':
-                tdat.append(float(timeandamp[xi]))
+                tdat.append(tfactor*float(timeandamp[xi]))
                 ydat.append(float(timeandamp[yi]))
             else:
                 break
@@ -101,7 +101,6 @@ def find_peaks(xdat, ydat, interval, find_hminus):
             istart = icen - winsize
         
 
-            
         for xd,yd in zip(xwindow, ywindow):
             #look for positive H- peak
             if i == 0 and find_hminus:
