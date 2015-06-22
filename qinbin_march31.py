@@ -16,12 +16,14 @@ import analysedata as adata
 #dirname ="../data/SortByDate/2014/3/24/dmag/"	 
 #dirname ="../data/SortByDate/2014/3/25/D0_1012_D1_140_F7/" 
 #dirname = "../data/SortByDate/2014/3/27/Corr_700A/"
-dirname = "../data/SortByDate/2014/3/31/QinBin/F7/"
+dirname = "/Users/Suzie/Physics/KURRIFFAG/DATA/2014/2014_03_31/QinBin/F7/"
+#dirname = "../data/SortByDate/2014/3/31/QinBin/F7/"
 
 #
 indices_select = [] #select particular indices from each channel, empty list means process all files
 #channel_id = ["CH1","CH2","CH3"] #string to identify each channel
-channel_id = ["F1","F5","F7"] #identifier for channels to be analysed
+#channel_id = ["F1","F5","F7"] #identifier for channels to be analysed
+channel_id = ["F7"]
 
 #select channel files
 ch_files_sel = adata.select_filenames(dirname, indices_select, channel_id)
@@ -56,7 +58,7 @@ F1_pos = [870, 850, 800, 750, 700, 650, 600, 550, 500, 450, 425, 400, 380, 360, 
 F7_pos = [870, 850, 800, 750, 700, 650, 600, 550, 500, 450, 425, 400, 380, 360, 340, 320, 300]
 
 
-loss_time_flatten = loss_time_all[0]
+loss_time_flatten = np.array(loss_time_all[0])
 
 if "F1" in dirname:
 	fout = 'QinBin_F1.txt'
@@ -71,5 +73,5 @@ elif "F7" in dirname:
 ff = open(fout,"w")
 print >>ff, "probe position (mm) loss time (us)"
 for pos, losst in zip(fpos, loss_time_flatten): 
-	print >>ff, pos, 1e6*losst
+	print >>ff, pos, 1e6*losst[0]
 ff.close()
