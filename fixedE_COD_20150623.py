@@ -6,7 +6,7 @@ from pylab import *
 import numpy
 from analysedata import *
 
-fdirect="2013_11_13_2/"
+fdirect="/Users/Suzie/Physics/KURRIFFAG/DATA/2013_11_13_2/"
 nsamples=5000
 degree=10 #This controls how smoothed the data is
 
