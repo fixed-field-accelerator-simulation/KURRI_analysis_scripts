@@ -247,8 +247,6 @@ def signal_loss_time_new(tdat, data, threshold_volts = 0.05, sigtonoise = 10, sh
     
     
 #SUZIE'S ANALYSIS FUNCTIONS
-
-
 def readset(dirname, setname):
     '''Read in a set of data where a 'set' is from a number of different probes'''
     dat=[]
