@@ -11,6 +11,8 @@ import analysedata_150619 as adata
 #Calculate time to loss at various probe positions from bunch monitor data.
 #30/9/2015 This version makes use of an updated algorithm signal_loss_time_new to find the loss time.
 
+probeoffset=4300.0 #mm 
+
 #dirname ="../data/SortByDate/2014/3/24/dmag/"	 
 #dirname ="../../data/SortByDate/2014/3/25/D0_1012_D1_0_F7/" # Corrector at 0A
 #dirname ="../../data/SortByDate/2014/3/25/D0_1012_D1_140_F1/" # Corrector at 140A
@@ -20,11 +22,11 @@ dirname = "../data/2015/6/24/700A/"
 #dirname = "profiles/2015-06-24/700A"
 #dirname =  "profiles/2014-03-31/F1"
 
-indices_select = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] #select particular indices from each channel, empty list means process all files
-
-#indices_select = [0,1,2]#channel_id = ["ch2","ch3"] #string to identify each channel (3/25 files)
+indices_select = [] #select particular indices from each channel, empty list means process all files
+#indices_select = [4]
+#indices_select = [ ]#channel_id = ["ch2","ch3"] #string to identify each channel (3/25 files)
 #channel_id = ["CH2","CH3"] #string to identify each channel (3/27 files) 
-channel_id = ["F"] #identifier for channels to be analysed (3/31 files)
+channel_id = ["F01","F02"] #identifier for channels to be analysed (3/31 files)
 
 #select channel files
 ch_files_sel = adata.select_filenames(dirname, indices_select, channel_id)
@@ -55,8 +57,11 @@ if pos_from_filename:
 
 	fsplit = [f.replace(".","_").split('_') for f in ch_files_sel[0]] #June 2015 data
 	probe =[f[0] for f in fsplit]
-	fpos = [f[1] for f in fsplit]
+	fpos = np.array([f[1] for f in fsplit])
 	
+
+	probe_radius = 1e-3*(fpos.astype(int) + probeoffset)
+
 	#fpos = [f.split('_')[-2] for f in ch_files_sel[0]] #assume same positions are true for other channels
 	#fpos = [f.split('_')[-3] for f in ch_files_sel[0]]
 
@@ -147,8 +152,6 @@ for chf in ch_files_sel:
 
 print "loss time all ",loss_time_all, "len ",len(loss_time_all)
 
-
-
 if scan_threshold:
 	print "loss time error ",loss_time_err_all
 
@@ -156,14 +159,18 @@ if scan_threshold:
 
 #-------------------------Rest specific to file format used at particular time-----------------
 
-
-if pos_from_filename:
+def write_data(fout,loss_time_tofile, err_time_tofile):
+	ff = open(fout,"w")
+	print >>ff, "probe position (mm) loss time (us) time error(us)"
+	for pos, losst, errt in zip(fpos, loss_time_tofile, err_time_tofile): 
+		print pos, 1e6*losst, 1e6*errt
+		#print >>ff, pos, 1e6*losst, 1e6*errt
+		ff.write("%3s %5.1f %3.1f \n" % (pos , 1e6*losst, 1e6*errt))
+	ff.close()
 	
-	
 
-	fout = 'QinBin_'+channel_id[0]+'.txt'
 
-else:
+if not pos_from_filename:
 	print "Warning: Using hardcoded probe positions!"
 	F5_pos = [890, 870, 850, 830, 800, 750, 700, 650, 600, 550, 500, 450, 425, 400, 380, 360, 340]
 	F1_pos = [870, 850, 800, 750, 700, 650, 600, 550, 500, 450, 425, 400, 380, 360, 340]
@@ -180,32 +187,32 @@ else:
 	elif "F7" in dirname:
 		fout = 'QinBin_F7.txt'
 		fpos = list(F7_pos)
-		
 	
+	sys.exit()
+		
+
 if not write_average_channel:
-	for loss_ch, err_ch in zip(loss_time_all, loss_time_err_all):
+	for loss_ch, err_ch, id in zip(loss_time_all, loss_time_err_all, channel_id):
+		print "loss_ch,id  ",loss_ch, id
 		if loss_ch != []:
+			
+			fout = 'QinBin_'+id+'.txt'
+		
 			loss_time_tofile = loss_ch
 			err_time_tofile = err_ch
-			break
+			
+			write_data(fout, loss_time_tofile, err_time_tofile)
+			
+		plt.errorbar(loss_ch, probe_radius, xerr=err_ch, marker='o')
+	
 else:
 	loss_time_tofile = [sum(c)/len(c) for c in np.transpose(loss_time_all)]
 	err_time_tofile = [sum([c1**2 for c1 in c])**0.5 for c in np.transpose(loss_time_err_all)]
 	print "loss_time_tofile ",loss_time_tofile, err_time_tofile
 	
 
-plt.errorbar([int(f) for f in fpos],loss_time_tofile, yerr=err_time_tofile, color='k',marker='o')
+plt.xlabel('time of loss')
+plt.ylabel('radius')
+plt.savefig('qinbin_result')
 plt.show()
 
-
-#outlier dealt with individually, 550A, 
-#Corr_550A_Foil_77.0mm_ST6_-6.0A_F7_300mm_S7up_CH2.csv loss time 0.000226, (and for CH3 0.000226)
-
-	
-ff = open(fout,"w")
-print >>ff, "probe position (mm) loss time (us) time error(us)"
-for pos, losst, errt in zip(fpos, loss_time_tofile, err_time_tofile): 
-	print pos, 1e6*losst, 1e6*errt
-	#print >>ff, pos, 1e6*losst, 1e6*errt
-	ff.write("%3s %5.1f %3.1f \n" % (pos , 1e6*losst, 1e6*errt))
-ff.close()
