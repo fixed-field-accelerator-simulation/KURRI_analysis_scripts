@@ -1,0 +1,98 @@
+PSB at full acceleration.  The hole is due to an injection glitch.
+!
+!
+! Version 2
+!
+! NB The "frames" of the input data may be rebinned and cuts imposed
+! to produce the "profiles" used in the reconstruction.  In addition,
+! some frames may be skipped before the first profile is considered.
+!
+!
+! Data Format:
+! Input data file =
+bunch_1D.txt
+! Directory in which to write all output =
+./
+! Number of frames in input data =
+101
+! Number of frames to ignore =
+0
+! Number of bins in each frame =
+64
+! Width (in s) of each frame bin =
+6.68E-9
+! Number of machine turns between frames =
+1
+! Number of frame bins before the lower profile bound to ignore =
+0
+! Number of frame bins after the upper profile bound to ignore =
+0
+! Number of frame bins after the lower profile bound to treat as empty
+! at the reconstructed time =
+0
+! Number of frame bins before the upper profile bound to treat as empty
+! at the reconstructed time =
+0
+! Number of frame bins to rebin into one profile bin =
+1
+! Time (in frame bins) from the lower profile bound to the synchronous phase
+! (if <0, a fit is performed) in the "bunch reference" frame = 248.0
+32
+! Max energy (in eV) of reconstructed phase space (if >0) =
+-20.E6
+! Number of the first profile at which to reconstruct =
+1
+! Number of the last profile at which to reconstruct =
+1
+! Step between reconstructions =
+1
+! Number of iterations for each reconstruction =
+40
+! Square root of the number of test particles to track per cell =
+5
+! Flag to extend the region in phase space of map elements (if =1) =
+0
+! Reference frame for bunch parameters (synchronous phase, baseline, integral) =
+1
+! Reference frame for machine parameters (RF voltages, B-field) =
+1
+!
+! Machine and Particle Parameters:
+! Peak RF voltage (in V) of principal RF system =
+4.0E3
+! and its time derivative (in V/s) =
+0.0
+! Peak RF voltage (in V) of higher-harmonic RF system =
+0.0
+! and its time derivative (in V/s) =
+0.0
+! Harmonic number of principal RF system =
+1
+! Ratio of harmonics between RF systems =
+1
+! Phase difference (in radians of the principal harmonic) between RF systems =
+0.0
+! Dipole magnetic field (in T) =
+1
+! and its time derivative (in T/s) =
+20.0
+! Machine radius (in m) =
+4.41
+! Bending radius (in m) =
+0.489396551697
+! Gamma transition =
+2.932
+! Rest mass (in eV/c**2) of accelerated particle =
+0.93827231E9
+! Charge state of accelerated particle =
+1
+!
+! Space Charge Parameters:
+! Flag to include self-fields in the tracking (if =1) =
+0
+! Geometrical coupling coefficient = 
+0.0
+! Reactive impedance (in Ohms per mode number) over a machine turn =
+0.0
+! Effective pick-up sensitivity (in digitizer units per instantaneous Amp) =
+0.86
