@@ -272,8 +272,9 @@ def set_param(inputp):
 	eta0 = 1/(gamma0**2) - 1/(gammat**2) 
 	beta0 = (1 - (1/gamma0**2))**0.5
 	omegarev0 = beta0*cl/Rnom
+	Vpeak = inputp['VRF1ref'][0]
 	
-	return E0, gamma0, eta0, beta0, omegarev0
+	return E0, gamma0, eta0, beta0, omegarev0, Vpeak
 
 def find_phi0(inputp):
 
