@@ -217,6 +217,26 @@ def signal_loss_time(tdat,data, method, cut_off_freq = 0.5e6, threshold_volts = 
         
 #SUZIE'S ANALYSIS FUNCTIONS
 
+def ke_to_relativistic_beta(ke, mass):
+    """ke in eV, mass in eV/c^2
+        """
+    te = ke + mass
+    
+    mom = sqrt(te**2 - mass**2) # in eV/c
+    
+    beta_rel = mom/te
+    
+    return beta_rel
+
+def ke_to_relativistic_beta_gamma(ke, mass):
+    """ke in eV, mass in eV/c^2
+        """
+    te = ke + mass
+    mom = sqrt(te**2 - mass**2) # in eV/c
+    
+    beta_gamma_rel = mom / mass
+    
+    return beta_gamma_rel
 
 def readset(dirname, setname):
     '''Read in a set of data where a 'set' is from a number of different probes'''
@@ -224,7 +244,7 @@ def readset(dirname, setname):
     for i in range(len(setname)):
         print "Reading data from: ", setname[i]
         ffile = dirname+setname[i]
-        dat.append(np.loadtxt(ffile, skiprows=1, usecols=(0,1), unpack=True))
+        dat.append(np.loadtxt(ffile, skiprows=1, usecols=(0,1,2), unpack=True))
     return dat
         
 
