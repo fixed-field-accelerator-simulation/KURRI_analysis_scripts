@@ -233,7 +233,6 @@ def get_plotinfo(input_file="plotinfo.data"):
 	float_l = []
 	for line in f1:
 		if line[0] == ' ':
-			print line
 			lspl = line.split("=")
 			try:
 				
