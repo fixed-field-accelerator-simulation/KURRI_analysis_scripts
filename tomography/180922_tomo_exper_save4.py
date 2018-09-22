@@ -19,9 +19,12 @@ turns_syncfrac = 0.5 #fraction of synchrotron oscillation to include
 recon_turn = 1 #reconstruct phase space at this turn
 show_data_switch = True #show raw data
 mountain_range_plot = False 
-shift_data = False #shifts data so that maximum is at centre 
+
 npfac = 1.0 #interpolate onto time axis with npfac times the number of points as the data
 interpolate_data = True #if False use interpolated data
+
+shift_data_max = False #shifts data so that maximum is at centre 
+shift_data_min = True #shifts data so that minimum is at edge
 
 print "reconstruct at following times [ms] ", 1e3*tomo_times
 print "phi_s set to [deg] ",phi_s_deg
@@ -405,17 +408,27 @@ for index_time in range(len(tomo_times)):
 	prof_data_a, t_turn_data = sort_data(istart, fitdiff_a, interpolate_data)	
 	
 	
-	if shift_data:
+	if shift_data_min or shift_data_max:
 		prof_data_tr = np.transpose(prof_data_a)
 		data_integ_0 = [sum(d) for d in prof_data_tr]
 		
 		imax_col = data_integ_0.index(max(data_integ_0))
 		imin_col = data_integ_0.index(min(data_integ_0))
 		
-		print "max_col - 0.5*n_slices) ", int(imax_col - 0.5*n_slices)
-		if imax_col - 0.5*n_slices!= 0:
-			#istart = istart + int(imin_col/npfac)
-			istart = istart + int(imax_col - 0.5*n_slices)
+		ishift = 0
+		if shift_data_min:
+			if imin_col != 0:
+				ishift = int(imin_col/npfac)
+			print "imin_col ",imin_col, ""
+		else:
+			if imax_col - 0.5*n_slices!= 0:
+				ishift = int((imax_col - 0.5*n_slices)/npfac)
+		
+			print "max_col - 0.5*n_slices) ", int(imax_col - 0.5*n_slices)
+			
+			
+		if ishift != 0:
+			istart = istart + ishift
 			prof_data_a, t_turn_data = sort_data(istart, fitdiff_a, interpolate_data)
 			prof_data_tr = np.transpose(prof_data_a)
 			data_integ_1 = [sum(d) for d in prof_data_tr]
