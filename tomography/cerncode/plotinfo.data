@@ -1,0 +1,21 @@
+Number of profiles used in each reconstruction,
+ profilecount =  58
+Width (in pixels) of each image = length (in bins) of each profile,
+ profilelength = 120
+Width (in s) of each pixel = width of each profile bin,
+ dtbin = 4.0000E-09
+Height (in eV) of each pixel,
+ dEbin = 6.1109E+04
+Number of elementary charges in each image,
+ eperimage = 1.303E+12
+Position (in pixels) of the reference synchronous point:
+ xat0 =  62.000
+ yat0 =  60.000
+Foot tangent fit results (in bins):
+ tangentfootl =    0.000
+ tangentfootu =    0.000
+ fit xat0 =   0.000
+Synchronous phase (in radians):
+ phi0(  1) = 0.2048
+Horizontal range (in pixels) of the region in phase space of map elements:
+ imin(  1) =  18 and imax(  1) = 119
