@@ -496,7 +496,7 @@ CONTAINS
     USE nrstuff
     IMPLICIT NONE
     INTEGER p
-    OPEN(8,file=TRIM(odir)//'plotinfo.data',status='new',access='sequential',&
+    OPEN(8,file=TRIM(odir)//'plotinfo.data',status='unknown',access='sequential',&
          form='formatted')
     write(8,'(a)') 'Number of profiles used in each reconstruction,'
     write(8,'(a,I3)') ' profilecount = ',profilecount
@@ -536,7 +536,7 @@ CONTAINS
     INTEGER P,I
     CHARACTER*(*) :: fname
     REAL(SP), DIMENSION(:,:), INTENT(IN) :: profiles
-    OPEN(8,file=TRIM(odir)//fname,status='new',access='sequential',&
+    OPEN(8,file=TRIM(odir)//fname,status='unknown',access='sequential',&
            form='formatted')
     DO P=1,SIZE(profiles)/profilelength
       DO I=1,profilelength
@@ -555,7 +555,7 @@ CONTAINS
    REAL(SP), DIMENSION(:,:), INTENT(IN)  :: phasespace
    INTEGER i,j
    CHARACTER*(*) :: fname
-   OPEN(8,file=TRIM(odir)//fname,status='new',access='sequential',&
+   OPEN(8,file=TRIM(odir)//fname,status='unknown',access='sequential',&
         form='formatted')
    DO i=1,profilelength
      DO j=1,profilelength
@@ -575,7 +575,7 @@ CONTAINS
    INTEGER i
    CHARACTER*(*) :: fname
    CLOSE(8)
-   OPEN(8,file=TRIM(odir)//fname,status='new',access='sequential',&
+   OPEN(8,file=TRIM(odir)//fname,status='unknown',access='sequential',&
         form='formatted')
    DO i=1,SIZE(onearray)
      write(8,*) i-1,onearray(i)
@@ -659,7 +659,7 @@ CONTAINS
         END DO
       END DO
     END IF
-    OPEN(8,file=TRIM(odir)//'jmax.data',status='new',&
+    OPEN(8,file=TRIM(odir)//'jmax.data',status='unknown',&
          access='sequential',form='formatted')
     DO p=filmstart,filmstop,filmstep
       imin(p)=allbinmin(p)
