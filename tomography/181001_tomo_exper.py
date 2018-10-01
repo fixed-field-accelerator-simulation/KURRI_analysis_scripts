@@ -5,6 +5,7 @@ from scipy.interpolate import interp1d
 from scipy.integrate import quadrature
 import sys
 import os
+
 import matplotlib.cm as cm
 import analysedata_180919 as adata
 import tomo_defs_180927 as tdefs
@@ -13,25 +14,31 @@ from subprocess import call
 import time 
 import matplotlib.animation as animation
 
+#set up formatting for movie files
+#Writer = animation.writers['ffmpeg']
+#writer = Wriiter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+
 tomo_times = np.array([11e-4]) #start time at which do do tomography #8.0e-4
 dirname = "../data/2018/9/20/"
 #dirname = "../data/2018/9/21/machida_san_foil_escape/" # "../data/2018/9/20/"
-filter = '' #look for csv files with this string in file name
+filter_string = '' #look for csv files with this string in file name
 phi_s_deg = 0 #set synchronous phase
 turns_syncfrac = 0.5 #fraction of synchrotron oscillation to include
 recon_start = 1 #reconstruct phase space at this turn first
-recon_step = 20 #step size terms of turn number between recon_start and recon_stop
+recon_step = 50 #step size terms of turn number between recon_start and recon_stop
 recon_stop = 101 #reconstruct phase space at this turn last
 animate = True
 
 shift_data_winmin = False #shift minimum of moving window average where window is out-of-bucket duration
 shift_data_max = False #shifts data so that maximum is at centre 
-shift_data_min = False #shifts data so that minimum is at edge
+shift_data_min = True #shifts data so that minimum is at edge
 
 show_data_switch = False #show raw data
-show_time_fit = False #show fit used to calculate ToF
-mountain_range_plot = False
-plot_data_shift = False  
+show_time_fit = True #show fit used to calculate ToF
+mountain_range_plot = True
+plot_data_shift = True
+
+read_rf_waveform = True
 
 npfac = 1.0 #interpolate onto time axis with npfac times the number of points as the data
 interpolate_data = True #if False use interpolated data
@@ -63,24 +70,31 @@ print "the following csv files were found"
 csv_files = []
 icsv = 0 
 for i1, f1 in enumerate(files):
-	if 'csv' in f1 and filter in f1:
+	if 'csv' in f1 and filter_string in f1:
 		print "index ",icsv," file ", f1
 		csv_files.append(f1)
 		icsv = icsv + 1
 
-rawin1 =  raw_input("select file ")
+rawin1 =  raw_input("select bunch monitor data file ")
 try:
 	i_file_sel = int(rawin1)
 except:
 	print "input is not integer"
 
+if read_rf_waveform:
+	rawin2 = raw_input("select RF data file ")
+
+	try:
+		i_rf_file_sel = int(rawin2)
+	except:
+		i_rf_file_sel = None
+
+
 if phi_s_deg == 0:
 	binslowerignore = 0 #add zeroes before profile (earlier time)
-	synch_index = int(npfac*75)
 	binsupperignore = 0 #add zeroes after profile (later time)
 else:
 	binslowerignore = int(npfac*35) #add zeroes before profile (earlier time)
-	#synch_index = int(npfac*40)
 	#binsupperignore = int(npfac*19) #add zeroes after profile (later time)
 
 #longitudinal tomography based on bunch monitor data.
@@ -164,9 +178,16 @@ else:
 	#read scope data
 	tdat_chf, data_chf = adata.read_scope(dirname, fname)
 
+	if read_rf_waveform and i_rf_file_sel != None:
+		fname = csv_files[i_rf_file_sel]
+		tdat_rf, sig_rf = adata.read_scope(dirname, fname)
+		tdat_rf_ms = 1e3*np.array(tdat_rf)
+		sig_rf_sc = 0.01*np.array(sig_rf)
 
+		
 time_interval = tdat_chf[2] - tdat_chf[1]
 tdat_chf_ms = 1e3*np.array(tdat_chf)
+
 
 i1 = 0
 for i1, t1 in enumerate(tdat_chf):
@@ -179,7 +200,9 @@ tof_guess = 600e-9
 
 def show_data(lower_lim_l):
 	plt.subplot(211)
+	#plt.plot(tdat_rf_ms, sig_rf_sc, 'r')
 	plt.plot(tdat_chf_ms, data_chf,'k')
+	
 	#plt.axvline(x=t_hminus, color='r')
 	
 	for lower_lim in lower_lim_l:
@@ -189,8 +212,11 @@ def show_data(lower_lim_l):
 	plt.xlim(0, tdat_chf_ms[-1])
 	plt.ylim(-0.2, 0.2)
 	plt.ylabel('bunch monitor (all)')
+
 	plt.subplot(212)
 	plt.plot(tdat_chf_ms, data_chf,'k')
+	if read_rf_waveform:
+		plt.plot(tdat_rf_ms, sig_rf_sc, 'r')
 	plt.xlim(1e3*lower_lim, 1e3*(lower_lim + 20*tof_guess))
 	plt.ylabel('bunch monitor (first 20 turns)')
 	plt.xlabel('time [ms]')
@@ -207,10 +233,13 @@ def calc_tof(lower_lim, points_per_turn):
 	_, pmx, _, i_peak_l, _, _ = adata.find_peaks(tdat_chf, data_chf, points_per_turn, find_hminus, x_low = lower_lim, x_high = upper_lim_fit, find_maxima = True)
 	
 	tp = np.arange(nturns_fit)
-	fitpmx = np.polyfit(tp, pmx, 1)
-	tof_fit = fitpmx[0]
-	tof_fit_ns = 1e9*tof_fit
+	npoly = 1
+	fitpmx = np.polyfit(tp, pmx, npoly)
+	tof_fit_mean = fitpmx[npoly - 1]
+	tof_fit_ns = 1e9*tof_fit_mean
 	polyfitpmx = np.poly1d(fitpmx)
+	tof_fit_a = polyfitpmx(tp)
+
 	tof_diff = pmx - polyfitpmx(tp)
 	fit_tof_diff = np.polyfit(tp, tof_diff, 2)
 	polyfitdiff = np.poly1d(fit_tof_diff)
@@ -236,21 +265,20 @@ def calc_tof(lower_lim, points_per_turn):
 		plt.savefig('time_fit')
 		plt.show()
 	
-	
 	#print (tof_fit+1e9*fitdiff_a[0])/time_interval , (tof_fit+1e9*fitdiff_a[-1])/time_interval
 			
-	return tof_fit, i_peak_l, fitdiff_a
+	return tof_fit_mean, i_peak_l, fitdiff_a, tof_fit_a
 		
 	
 
 
-def sort_data(istart, fitdiff_a, nturns, interpolate_data = True):
+def sort_data(istart, fitdiff_a, tof_fit_a, nturns,n_slices, interpolate_data = True, nshift = 0):
 	"""Divide bunch monitor data into individual turns. There is the option to interpolate onto regular time points. """
 	
 	#iend = istart + nturns*points_per_turn
 	 
 	
-	tstart = tdat_chf[istart] #t_dat_all[0]
+	tstart = tof_fit_a[0] #tdat_chf[istart] #t_dat_all[0]
 	
 	#plt.plot(t_dat_all, sig_dat_all)
 	#plt.show()
@@ -293,18 +321,42 @@ def sort_data(istart, fitdiff_a, nturns, interpolate_data = True):
 	else:
 		#interpolate onto time base Trev/n_slices
 		
-		t_turn_data = np.linspace(0, tof_fit, n_slices)
-		t_dat_adj = []
-		for it in range(nturns):
-			t_this_turn = tstart + it*tof_fit + t_turn_data + fitdiff_a[it] 
-			t_dat_adj  = np.concatenate((t_dat_adj, t_this_turn))
+		#nturns = 3
+
+		t_turn_data = np.linspace(0, tof_fit_mean, n_slices)
+
+		new_code = True
+		if new_code:		
+			t_dat_adj = []
+			#tstart_update  = tstart
+
+			for it in range(1, nturns+1):
+				time1 = tof_fit_a[it-1]
+				time2 = tof_fit_a[it]
+				t_oneturn_data = np.linspace(time1, time2 ,n_slices) #fitdiff_a[it]
+				t_dat_adj  = np.concatenate((t_dat_adj, t_oneturn_data))
+
+			t_dat_adj = t_dat_adj + time_interval*nshift
+				
+		else:
+			
+			t_dat_adj = []
+			for it in range(nturns):
+				t_this_turn = tstart + it*tof_fit_mean + t_turn_data + fitdiff_a[it] 
+				t_dat_adj  = np.concatenate((t_dat_adj, t_this_turn))
 	
+
+		
+
+
 		t_adj_last = t_dat_adj[-1]
 		i1 = 0
 		for i1, t1 in enumerate(tdat_chf):
 			if t1 >= t_adj_last:
 				index_t_last = i1
-				break		
+				break	
+
+	
 		t_dat_orig = np.array(tdat_chf[istart:index_t_last])
 		sig_dat_orig = np.array(data_chf[istart:index_t_last])
 		
@@ -320,7 +372,8 @@ def sort_data(istart, fitdiff_a, nturns, interpolate_data = True):
 		#plt.plot(t_dat_orig, sig_dat_orig,'ko')
 		#plt.axvline(x=t_dat_all[-1])
 		#plt.show()
-			
+		#sys.exit()
+	
 	it = 0
 	data_win_sig_sel = []
 	for data_win in sig_dat_split[:nturns]:
@@ -421,6 +474,46 @@ for tt in tomo_times:
 	t_crude = tdat_chf[icrude]
 	lower_lim_l.append(t_crude)
 
+
+#find zero crossing times in rf data
+if read_rf_waveform:
+	zero_cross_ind = []
+	t_zero_cross = []
+	plot_zero_calc = False
+	for ind in range(icrude, len(tdat_rf)):
+		if sig_rf[ind-1] < 0.0 and sig_rf[ind] > 0.0:
+			slope = (sig_rf[ind] - sig_rf[ind-1])
+			offset = sig_rf[ind] - slope
+			zerot_fac = -offset/slope
+			
+			print tdat_rf[ind-1] + zerot_fac*time_interval
+			if plot_zero_calc:
+				xp = np.linspace(0,1,10)
+				yp = slope*xp + offset
+				plt.plot([0,1],[sig_rf[ind-1],sig_rf[ind]],'ko')
+				plt.plot(xp, yp, 'r-')
+				plt.axvline(x=zerot_fac)	
+				plt.show()
+
+			t_zero_cross.append(tdat_rf[ind-1] + zerot_fac*time_interval)
+
+			zero_cross_ind.append(ind)
+		if len(zero_cross_ind) > 400:
+			break
+	
+	t_zero_cross = np.array(t_zero_cross)
+	
+	zero_cross_sep = [zero_cross_ind[i] - zero_cross_ind[i-1] for i in range(1, len(zero_cross_ind))]
+	
+	sig_zero_cross_sep = [sig_rf[zero_cross_ind[i]] - sig_rf[zero_cross_ind[i]-1] for i in range(1, len(zero_cross_ind))]
+	t_zero_cross_sep = [t_zero_cross[i] - t_zero_cross[i-1] for i in range(1, len(t_zero_cross))]
+	print "zero cross sep ",zero_cross_sep
+ 	print "time_zeros ",sig_zero_cross_sep
+	print "t_zero_cross_sep ",t_zero_cross_sep
+
+	#plt.plot(t_zero_cross_sep, 'ko')
+	#plt.show()
+	#sys.exit()
 print "specified initial times ",tomo_times
 print "chosen initial times ",lower_lim_l
 
@@ -433,6 +526,7 @@ for index_time in range(len(tomo_times)):
 	
 	if show_data_switch and index_time == 0:
 		show_data(lower_lim_l)
+		
 	
 	p0_mev = 1e-6*np.sqrt(Etot_a[index_time]**2 - PROTON_MASS**2)
 	bh = ((2*Qs_a)/(harmonic*abs(eta_a[index_time]))) #bucket height
@@ -446,9 +540,11 @@ for index_time in range(len(tomo_times)):
 	
 	#calculate TOF
 	nturns_fit = 400
-	tof_fit, i_peak_l, fitdiff_a = calc_tof(lower_lim, points_per_turn)
+	tof_fit_mean, i_peak_l, fitdiff_a, tof_fit_a = calc_tof(lower_lim, points_per_turn)
 	istart = i_peak_l[0]
-	tof = tof_fit
+	tof = tof_fit_mean
+
+	tof_fit_a = t_zero_cross
 
 	T = tof/harmonic#2*np.pi/(harmonic*omegarev) #rf period
 	T_rf_ns = 1e9*T
@@ -456,13 +552,18 @@ for index_time in range(len(tomo_times)):
 	omega_rf = omega_rev*harmonic
 
 	#update points per turnt_turn_data
-	points_per_turn = int(round(tof_fit/time_interval)) 
+	points_per_turn = int(round(tof/time_interval)) 
 	n_slices = int(npfac*points_per_turn)
 	#n_slices_active = n_slices-(binslowerignore + binsupperignore)
-	print  "points_per_turn ",points_per_turn
 	
+
 	#bucket phase calculation
-	phi_l1, phi_l2 = phase_extrema(phi_s)
+	if phi_s_deg == 0:
+		phi_l1 = math.pi
+		phi_l2 = -math.pi
+	else:
+		phi_l1, phi_l2 = phase_extrema(phi_s)
+
 	bucket_phase_width = abs(phi_l1 - phi_l2)
 	bucket_dur_ns = T_rf_ns*(bucket_phase_width/(2*math.pi))
 	outbucket_dur_ns = T_rf_ns - bucket_dur_ns
@@ -475,11 +576,15 @@ for index_time in range(len(tomo_times)):
 
 
 	synch_index = int(round(n_slices*(phi_s - phi_l2)/(2*math.pi)))
+	print "synch_index ",synch_index
 	
 	
 	n_slices_active = int(n_slices*bucket_dur_ns/T_rf_ns) #number of slices in bucket
 	n_slices_outb = n_slices - n_slices_active
-	print "bucket points, out-of-bucket points ",n_slices_active, n_slices - n_slices_active
+	print "bucket points, out-of-bucket points ",n_slices_active, n_slices_outb
+
+	if shift_data_winmin and phi_s_deg == 0:
+		print "shift_data_winmin must be False if phi_s_deg is zero"
 
 	if phi_s_deg != 0:
 		binslowerignore = n_slices_outb
@@ -487,37 +592,43 @@ for index_time in range(len(tomo_times)):
 		
 	#sort data into turns covering roughly a synchrotron period
 	nturns_sync = int(round(Ts_a[index_time]))
-	prof_data_a, t_turn_data = sort_data(istart, fitdiff_a, nturns_sync, interpolate_data)	
+
+
+	prof_data_a, t_turn_data = sort_data(istart, fitdiff_a, tof_fit_a, nturns_sync, n_slices, interpolate_data)	
 	
-	
-	if shift_data_min or shift_data_max or shift_data_winmin:
+	ishift = 0
+	if shift_data_min or shift_data_max or shift_data_winmin or ishift != 0:
 		prof_data_tr = np.transpose(prof_data_a)
 		data_integ_0 = [sum(d) for d in prof_data_tr]
-		
-		runmean = tdefs.running_mean_wrap(data_integ_0, n_slices_outb)
+
 
 		imax_col = data_integ_0.index(max(data_integ_0))		
 		imin_col = data_integ_0.index(min(data_integ_0))
 
+		
 		if shift_data_winmin:
+			runmean = tdefs.running_mean_wrap(data_integ_0, n_slices_outb)
 			imax_wincol = np.argmax(runmean)
 			imin_wincol = np.argmin(runmean)
 
-		ishift = 0
+		
 		if shift_data_min:
 			if imin_col != 0:
 				ishift = int(imin_col/npfac)
-			print "imin_col ",imin_col, ""
+			print "imin_col ",imin_col
 		elif shift_data_max:
 			if imax_col - 0.5*n_slices!= 0:
 				ishift = int((imax_col - 0.5*n_slices)/npfac)
+			print "imax_col ", imax_col
 		elif shift_data_winmin:
 				ishift = int(imin_wincol/npfac) - int(0.5*n_slices_outb)
 		
-
+		print "ishift ",ishift
 		if ishift != 0:
+
 			istart = istart + ishift
-			prof_data_a, t_turn_data = sort_data(istart, fitdiff_a, nturns_sync, interpolate_data)
+
+			prof_data_a, t_turn_data = sort_data(istart, fitdiff_a, tof_fit_a, nturns_sync, n_slices, interpolate_data, nshift= ishift)
 			prof_data_tr = np.transpose(prof_data_a)
 			data_integ_1 = [sum(d) for d in prof_data_tr]
 			
@@ -526,21 +637,26 @@ for index_time in range(len(tomo_times)):
 			t_turn_data_ns = 1e9*t_turn_data + tadj
 
 			if plot_data_shift:
-				plt.subplot(211)
+
+				if shift_data_winmin:
+					plt.subplot(211)
 
 				plt.plot(xd, data_integ_0,'ko-',label='before shift')
 				plt.plot(xd, data_integ_1,'r',label='after shift')
-				plt.axvline(x = 0.5*n_slices, color='gray')
+				plt.axvline(x = synch_index, color='gray')
 				plt.xlim(xmax=len(data_integ_0))
 				
 				plt.ylabel('integrated signal')
 				plt.title('signal integrated over turns specified')
 
-				plt.subplot(212)
-				plt.plot(runmean, 'ko-')
+				if shift_data_winmin:
+					plt.subplot(212)
+					plt.plot(runmean, 'ko-')
 				plt.xlabel('slice number')
 				
 				plt.xlim(xmax=len(data_integ_0))
+
+				
 
 				plt.legend()
 				plt.show()
@@ -594,20 +710,15 @@ for index_time in range(len(tomo_times)):
 		plt.axvline(x=180*phi_l1/math.pi)
 		plt.axvline(x=180*phi_l2/math.pi)
 		plt.show()
-	#sys.exit()
 
 	#this is not a real Bdot - it is a parameter used to specify phis in the tomo code
 	Bdot = (V_rf*np.sin(phi_s))/(bending_radius*2*math.pi*Rnom)
-
 
 	from subprocess import call
 	run_tomo_code = True
 	if run_tomo_code:
 	
 		input_settings = tdefs.get_input("input_default.dat")
-	
-		#synch_index_ideal = 
-
 	
 		binwidth_time = time_interval
 	
@@ -617,7 +728,7 @@ for index_time in range(len(tomo_times)):
 		datafile = 'kurridata.txt'
 		input_settings["numframes"] = nturns
 		input_settings["numbins"] = n_slices
-		input_settings["synchbin"] = synch_index#int(0.5*n_slices)
+		input_settings["synchbin"] = synch_index #int(0.5*n_slices)
 		input_settings["framebinwidth"] = binwidth_time/npfac	
 		input_settings["binslowerignore"] = binslowerignore
 		input_settings["binsupperignore"] = binsupperignore
@@ -660,7 +771,6 @@ for index_time in range(len(tomo_times)):
 
 		return data_a
 
-	
 	
 	show_tomo_result = True
 	if show_tomo_result:
@@ -793,6 +903,7 @@ for index_time in range(len(tomo_times)):
 
 		Nt = len(image_all_a)
 		anim = animation.FuncAnimation(fig, animate, frames=Nt, interval=500, blit=False)
+		#anim.save("tomo.mp4", writer=writer)
 		plt.show()
 
 	else:
