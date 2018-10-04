@@ -216,7 +216,7 @@ PROGRAM tomo_v2
     mapsix=-1
     mapsweightx=0
     maps=0
-    reconstruct_p=film	
+    reconstruct_p=film
 !   Do first map
     actmaps=0
     DO ii=imin(reconstruct_p),imax(reconstruct_p)
@@ -291,9 +291,9 @@ PROGRAM tomo_v2
           END DO JJLOOP       
           iioffset=uplim
         END DO IILOOP
-        WRITE(*,'(a,I3,a,I3,a,F7.3,a)')&
-          ' Tracking from time slice ',reconstruct_p,' to ',PP,', ',&
-          100_SP*is_out/REAL(k,SP),'% went outside the image width.'
+!        WRITE(*,'(a,I3,a,I3,a,F7.3,a)')&
+!          ' Tracking from time slice ',reconstruct_p,' to ',PP,', ',&
+!          100_SP*is_out/REAL(k,SP),'% went outside the image width.'
       END DO 
       direction=-1
       endprofile=1
