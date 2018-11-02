@@ -22,7 +22,7 @@ read_rf_waveform = True
 
 #tomo_times = np.array([-0.05e-3]) #produce intensity data from this time
 
-tomo_times = np.array([0.06e-3])
+tomo_times = np.array([0.08e-3])
 
 #dirname = "../data/2018/9/20/"
 #dirname = "../data/2018/9/21/machida_san_foil_escape/proc/"
@@ -32,8 +32,8 @@ filter_string = '' #look for csv files with this string in file name
 phi_s_deg = 20 #set synchronous phase
 turns_syncfrac = 0.5 #fraction of synchrotron oscillation to include
 recon_start = 1 #reconstruct phase space at this turn first
-recon_step = 100 #step size terms of turn number between recon_start and recon_stop
-recon_stop = 51 #reconstruct phase space at this turn last
+recon_step = 10 #step size terms of turn number between recon_start and recon_stop
+recon_stop = 99 #reconstruct phase space at this turn last
 animate = False
 
 ncheck = 0 #number of synch point settings to check on either side of that set
@@ -873,6 +873,8 @@ for index_time in range(len(tomo_times)):
 	#number of turns specified in terms of sync period
 	nturns = int(turns_syncfrac*Ts_a[index_time])
 	
+
+	
 	p0_mev = 1e-6*np.sqrt(Etot_a[index_time]**2 - PROTON_MASS**2)
 	bh = ((2*Qs_a)/(harmonic*abs(eta_a[index_time]))) #bucket height
 	
@@ -1096,7 +1098,8 @@ for index_time in range(len(tomo_times)):
 			#data_integ_1 = data_integ_1/np.max(data_integ_1)
 			#data_integ_1_norm = data_integ_1_norm/max(data_integ_1_norm)
 
-			if show_imshow:
+			show_imshow_2 = False
+			if show_imshow_2:
 				plt.imshow(prof_data_a, origin='lower', aspect='auto')
 				plt.xlabel('time bin')
 				plt.ylabel('turn')
@@ -1198,11 +1201,21 @@ for index_time in range(len(tomo_times)):
 
 		print "write ", nturns, " turns to file"
 		f1 = open('kurridata.txt', 'w')
+		
+		profmaxind = [np.argmax(prof_data_a[it]) for it in range(nturns)]
+		for it in range(nturns):
+			plt.plot(prof_data_a[it]+0.01*it)
+		plt.show()
+		
+		plt.plot(profmaxind)
+		plt.show()
+		
+		
 		for it in range(nturns):
 			yprof = prof_data_a[it]
 			yprof_norm = yprof/max(yprof)
 			#plt.plot(yprof,'ko-')
-			for y in yprof:
+			for y in yprof_norm:
 				print >>f1,y
 		f1.close()
 
@@ -1370,7 +1383,7 @@ for index_time in range(len(tomo_times)):
 			chisq_l.append(chisq)
 		
 			if iloop == 0:
-				tomo_time_proj_a = tomo_time_proj
+				tomo_time_proj_a = np.array([tomo_time_proj])
 			else:
 				tomo_time_proj_a = np.vstack((tomo_time_proj_a, tomo_time_proj))
 
@@ -1398,6 +1411,7 @@ compare_sel_profiles = False
 if compare_sel_profiles:
 	col_l = ['k','r','b']
 	ip = 0
+	
 	for proj, irc in zip(tomo_time_proj_a, recon_id):
 		plt.subplot(211)
 		plt.plot(proj,col_l[ip])
@@ -1483,7 +1497,8 @@ else:
 		#plt.plot(t_tomo_ns, prof_data_norm,'ko-',linewidth=2,label='data')
 
 		print "len t_tomo_ns ",len(t_tomo_ns)
-
+		#print "tomo_time_proj_a shape ",tomo_time_proj_a.shape
+		
 		plt.plot(t_tomo_ns, tomo_time_proj_a[ipl],'r-',linewidth=2,label='tomography')
 		#plt.xlim(t_bucket[0], t_bucket[-1])
 
