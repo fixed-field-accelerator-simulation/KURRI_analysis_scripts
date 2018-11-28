@@ -46,7 +46,7 @@ if calc_rf_time_offset:
 else:
 	tomo_times = np.array([0.8e-3]) #this is with respect to offset if add_time_offset is True
 	use_file_offset = True
-	nturns_sort = 200
+	nturns_sort = 10*256
 
 	intensity_calc = False
 
@@ -1079,7 +1079,8 @@ for index_time in range(len(tomo_times)):
 			fi.close()	
 
 		
-		print "time_interval_ns ",time_interval
+		print "time_interval_ns ",time_interval_ns
+		
 		
 		max_intensity = max(intensity_raw)
 		imax = intensity_raw.index(max_intensity)
@@ -1380,17 +1381,66 @@ for index_time in range(len(tomo_times)):
 				plt.savefig('imshow_prof1')
 				plt.show()
 
-			
-			prof_data_flat = prof_data_a.flatten()
-			fft_prof_data = np.fft.fft(prof_data_flat)
-			fftabs_prof_data = np.abs(fft_prof_data)
-			
-			from scipy import signal
-			widths = np.arange(1,1000)
-			cwtmatr = signal.cwt(prof_data_flat, signal.ricker, widths)
-			#plt.plot(prof_data_flat)
-			plt.imshow(cwtmatr, extent=[-1, 1, widths[-1], 1], origin='lower', aspect='auto')
-			plt.show()
+			freq_analysis = True
+			if freq_analysis:
+				prof_data_flat = prof_data_a.flatten()
+				fft_prof_data = np.fft.fft(prof_data_flat)
+				fftabs_prof_data = np.abs(fft_prof_data)
+
+				xr = np.arange(nturns_sort)/nturns_sort
+				fmin = 0.001
+				fmax = 0.007
+				indmin = None
+				indmax = None
+				for x1 in xr:
+					if x1 > fmin and indmin == None:
+						indmin = np.where(xr == x1)[0][0]
+					if x1 > fmax and indmax == None:
+						indmax = np.where(xr == x1)[0][0]
+				print "indmin, indmax ",indmin, indmax
+
+
+				maxfft_l = []
+				fftabs_l = []
+				for i in range(n_slices):
+					fft_prof_tbin = np.fft.fft(prof_data_a[:,i])
+					fftabs_prof_tbin = np.abs(fft_prof_tbin)
+					fftabs_l.append(fftabs_prof_tbin)
+
+					maxfft1 = max(fftabs_prof_tbin[indmin:indmax])
+					maxfft_l.append(maxfft1)
+
+					#plt.subplot(211)
+					#plt.plot(prof_data_a[:,i])
+					#plt.subplot(212)
+					#plt.plot(xr, fftabs_prof_tbin)
+					#plt.xlim(fmin,0.01)
+					#plt.ylim(0, max(maxfft_l))
+					#plt.show()
+
+				fftabs_a = np.transpose(np.array(fftabs_l))
+				clev = np.linspace(0, max(maxfft_l), 20)
+				print "fftabs_a shape, n_slices, nturns_sort ",fftabs_a.shape, n_slices, nturns_sort
+				
+				plt.contour(range(n_slices), xr,fftabs_a, levels = clev)
+				plt.ylim(fmin, fmax)
+				plt.show()
+				sys.exit()
+
+				
+				from scipy import signal
+				widths = np.arange(1,1000)
+				#cwtmatr = signal.cwt(prof_data_flat, signal.ricker, widths)
+				#plt.plot(prof_data_flat)
+				print prof_data_flat[:10]
+				
+				dt = time_interval_ns
+				Fs = n_slices# the sampling frequency
+				print "Fs ",Fs
+				nfft = 2**9
+				#plt.imshow(cwtmatr, extent=[-1, 1, widths[-1], 1], origin='lower', aspect='auto')
+				plt.specgram(prof_data_flat, NFFT=nfft, Fs=Fs, noverlap = int(0.5*nfft))
+				plt.show()
 			
 			sys.exit()
 			#plt.matshow(prof_data_a)
