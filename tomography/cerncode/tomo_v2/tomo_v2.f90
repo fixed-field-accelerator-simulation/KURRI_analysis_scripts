@@ -373,7 +373,9 @@ PROGRAM tomo_v2
 
 !   Calculate discrepancy for the last projection and write to file
     diffprofiles=profiles-project(phasespace)
-    darray(niter+1)=discrepancy(diffprofiles)  
+    darray(niter+1)=discrepancy(diffprofiles)
+    
+    write(6,*)"discrepancy " ,darray(niter+1)
     CALL out_array(darray,'d'//myext//'.data')
 !   Write final picture to file
     CALL out_picture(phasespace,&
