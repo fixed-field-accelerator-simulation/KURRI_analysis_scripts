@@ -263,7 +263,7 @@ def powerlaw_fit(xdata, ydata):
 #dirname ="../data/SortByDate/2014/3/24/dmag/"	 
 #dirname ="../data/SortByDate/2014/3/25/D0_1012_D1_140_F7/" 
 #dirname = "../data/SortByDate/2014/3/27/Corr_700A/"
-dirname = "../../data/SortByDate/2014/3/31/QinBin/F7/"
+dirname = "../data/2014/3/31/QinBin/F7/"
 #dirname = "/mnt/data1/KURRIFFAG/2014-03-31/QinBin/F7/"
 
 
@@ -321,7 +321,7 @@ nstd = 10 #set threshold above noise to determine final loss point
 method = 'noise' #choose "fixed" or "noise"
 
 #read file to map time to momentum
-rfdir="../../march14_exp/rf_pattern/"
+rfdir="../march14_exp/rf_pattern/"
 rffile="SimulatedVariableK.dat"
 rfdat = np.loadtxt(rfdir+rffile, skiprows=2, usecols=(0,1,2), unpack=True)
 rfdat_t=np.array(rfdat[0])*1E6
@@ -754,7 +754,7 @@ for iloop in range(nloop):
 	
 	#powerlaw fit
 	profile_calc = True
-	fit_data = False
+	fit_data = True
 	if profile_calc:
 		#xdata = r_list_psc[index_zsig1_av_av-1: index_zsig2-1] #profile scaled
 		xdata1 = r_list[index_zsig1_av_av-1: index_zsig2-1]
