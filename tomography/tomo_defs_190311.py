@@ -7,6 +7,7 @@ import os
 from scipy.optimize import minimize
 from scipy.optimize import fmin
 from scipy import ndimage
+from subprocess import call
 
 PROTON_MASS = 938.27203e6
 SPEED_OF_LIGHT = 299792458
@@ -1159,7 +1160,7 @@ def calc_sync_point(prof_data_a, nwin, sync_bin, show_int_prof = False, show_sym
 		"""
 
 	nturns = prof_data_a.shape[0]
-	n_slices = prof_data_a.shape[1]
+	nslices = prof_data_a.shape[1]
 
 	data_integ_0 = np.sum(prof_data_a, axis=0)
 	imax_col = np.argmax(data_integ_0)
@@ -1233,7 +1234,7 @@ def calc_sync_point(prof_data_a, nwin, sync_bin, show_int_prof = False, show_sym
 
 	isym_integ_av = sum(isym_integ_list)/len(isym_integ_list)
 	isym_final =  int(isym_integ_av)
-	idelay =  isym_final - sync_bin #- int(0.5*n_slices))	
+	idelay =  isym_final - sync_bin #- int(0.5*nslices))	
 
 	print "symmetry point av",isym_integ_av
 	print "sync_bin ",sync_bin
@@ -1278,13 +1279,13 @@ def calc_sync_point(prof_data_a, nwin, sync_bin, show_int_prof = False, show_sym
 
 
 
-def sort_data(istart, time_data, signal_data, turn_times_a, time_indices, nturns, n_slices, interpolate_data = True, nshift = 0, npfac=1):
+def sort_data(istart, time_data, signal_data, turn_times_a, time_indices, nturns, nslices, interpolate_data = True, nshift = 0, npfac=1):
 	"""Divide bunch monitor data into individual turns. There is the option to interpolate onto regular time points. 
 	istart: the index of the first time point
 	turn_times_a: times at the start of each turn
 	time_indices: indices associated with turn_times_a
 	nturns: limit on the number of turns to sort
-	n_slices: number of time points per turn
+	nslices: number of time points per turn
 	interpolate_data: interpolate onto a regular grid delimited by turn_times_a if True
 	nshift: shift time by this number of points to deal with offset of rf signal (if shift_time is True)
 	
@@ -1294,7 +1295,7 @@ def sort_data(istart, time_data, signal_data, turn_times_a, time_indices, nturns
 	#iend = istart + nturns*points_per_turn
 	 
 	#use ToF to define time.
-	#t_dat_adj = tstart + np.linspace(0, nturns*tof, nturns*n_slices)
+	#t_dat_adj = tstart + np.linspace(0, nturns*tof, nturns*nslices)
 
 	if npfac > 1 and not interpolate_data:
 		print "must interpolate data if npfac != 1"
@@ -1303,12 +1304,12 @@ def sort_data(istart, time_data, signal_data, turn_times_a, time_indices, nturns
 
 	use_mean_tof = False
 
-	#interpolate onto time base Trev/n_slices
+	#interpolate onto time base Trev/nslices
 	t_dat_adj = []
 	for it in range(1, nturns+1):
 		time1 = turn_times_a[it-1]
 		time2 = turn_times_a[it]
-		t_oneturn_data = np.linspace(time1, time2 ,n_slices) #fitdiff_a[it]
+		t_oneturn_data = np.linspace(time1, time2 ,nslices) #fitdiff_a[it]
 		t_dat_adj  = np.concatenate((t_dat_adj, t_oneturn_data))
 
 	t_dat_adj = t_dat_adj + time_interval*nshift
@@ -1330,7 +1331,7 @@ def sort_data(istart, time_data, signal_data, turn_times_a, time_indices, nturns
 		sig_interp = np.interp(t_dat_adj, t_dat_orig, sig_dat_orig)
 		sig_dat_split = np.split(sig_interp, nturns)
 	else:	
-		sig_dat_split = np.split(np.array(signal_data[istart:istart + nturns*n_slices]), nturns)
+		sig_dat_split = np.split(np.array(signal_data[istart:istart + nturns*nslices]), nturns)
 		
 
 
@@ -1349,11 +1350,11 @@ def sort_data(istart, time_data, signal_data, turn_times_a, time_indices, nturns
 
 
 
-def mountain_range(data, nt, n_slices, bucketlim_low=None, bucketlim_high=None, sync_bin = None, incl_xaxis = False, xaxis = None, fmount='mountainrange'):
+def mountain_range(data, nt, nslices, bucketlim_low=None, bucketlim_high=None, sync_bin = None, incl_xaxis = False, xaxis = None, fmount='mountainrange'):
 
 	#nd = data.shape
 	nd = len(data)
-	ndx = n_slices
+	ndx = nslices
 
 	#establish range
 	max_data_t = np.array([max(data[it]) for it in range(nt)])
@@ -1528,16 +1529,16 @@ def imshow_plot(data,extent,ylabel=None):
 	plt.show()
 
 
-def longitudinal_param(V_rf, phi_s, harmonic, alpha_c, rho, ke, tof, n_slices, nturns, mass):
+def longitudinal_param(V_rf, phi_s, harmonic, alpha_c, rho, ke, tof, nslices, nturns, mass):
 	"""harmonic: harmonic of RF
 	   tof: mean ToF
-	   n_slices: data points per RF period"""
+	   nslices: data points per RF period"""
 
 	T_rf = tof/harmonic#2*np.pi/(harmonic*omegarev) #rf period
 	T_rf_ns = 1e9*T_rf
 	omega_rev = 2*math.pi/T_rf
 	omega_rf = omega_rev*harmonic
-	dphasebin = 2*math.pi/n_slices
+	dphasebin = 2*math.pi/nslices
 	dtbin_phase = dphasebin/omega_rf
 
 	Etot = ke + mass
@@ -1586,18 +1587,18 @@ def longitudinal_param(V_rf, phi_s, harmonic, alpha_c, rho, ke, tof, n_slices, n
 	bucket_dur_ns = T_rf_ns*(bucket_phase_width/(2*math.pi))
 	outbucket_dur_ns = T_rf_ns - bucket_dur_ns
 
-	synch_index = int(round(n_slices*(phi_s - phi_l2)/(2*math.pi)))
+	synch_index = int(round(nslices*(phi_s - phi_l2)/(2*math.pi)))
 
-	n_slices_active = int(n_slices*bucket_dur_ns/T_rf_ns) #number of slices in bucket
-	n_slices_outb = n_slices - n_slices_active
-	print "bucket points, out-of-bucket points, bucket points/all points ",n_slices_active, n_slices_outb, n_slices_active/n_slices
+	nslices_active = int(nslices*bucket_dur_ns/T_rf_ns) #number of slices in bucket
+	nslices_outb = nslices - nslices_active
+	print "bucket points, out-of-bucket points, bucket points/all points ",nslices_active, nslices_outb, nslices_active/nslices
 
 	if phi_s == 0:
 		binslz = 0
 		binsuz = 0
 	else:
-		binslz = n_slices_outb#abs(int(n_slices*phi_lower/(math.pi))) #n_slices_outb
-		binsuz =   n_slices - (binslz + n_slices_active)
+		binslz = nslices_outb#abs(int(nslices*phi_lower/(math.pi))) #nslices_outb
+		binsuz =   nslices - (binslz + nslices_active)
 
 	npts = 1000
 	a1 = 0.5*harmonic*omega_rf*eta
@@ -1610,7 +1611,7 @@ def longitudinal_param(V_rf, phi_s, harmonic, alpha_c, rho, ke, tof, n_slices, n
 	phase_sep = np.insert(phase_sep, 0, phi_l2) 
 
 	phase_sep_deg = (180/math.pi)*phase_sep
-	sync_bin = binslz + int(n_slices_active*sync_frac)
+	sync_bin = binslz + int(nslices_active*sync_frac)
 	
 	#Hamiltonian on separatrix
 	Hsep = H_fn(math.pi - phi_s, 0, phi_s, a1, a2)
@@ -1637,16 +1638,19 @@ def longitudinal_turn(V_rf, phi_s, harmonic, alpha_c, ke, Rnom, nturns, dtbin_ph
 	return Etot_turn, dEbin_c_turn, p0_turn, eta_turn, beta_turn
 
 
-def read_data_file(filen):
+def file_read(filen, sel_col=0):
+	""" filen: file path.
+		sel_col: indext of column in data file to read. Default 0"""
 	
 	f1 = open(filen,'r')
 	data_l = []
 	for data in f1:
 		dataspl = data.split()
-		data_l.append(float(dataspl[0]))
+		data_l.append(float(dataspl[sel_col]))
 	data_a = np.array(data_l)
 
 	return data_a
+
 
 
 def filter_isolated_cells(array, struct):
@@ -1674,4 +1678,48 @@ def filter_isolated_cells(array, struct):
 	
 	
 	return filtered_array
+
+
+def run_tomo_code(tomo_outdir, input_param):
+ 	"""Prepare input file for tomography code. Run tomography code"""
+
+	nturns, nslices, synch_index, dtbin_phase, binslz, binsuz, recon_start, recon_stop, recon_step, Bnom, Bdot, V_rf, Rnom, rho, gamma_tr = input_param
+
+	input_settings = get_input("input_default.dat")
+
+	fname = 'input_v2.dat'
+
+	descrip = 'KURRI'
+	datafile = 'kurridata.txt'
+	input_settings["numframes"] = nturns
+	input_settings["numbins"] = nslices
+	input_settings["synchbin"] = synch_index #int(0.5*nslices)
+	input_settings["framebinwidth"] = dtbin_phase	
+	input_settings["binslowerignore"] = binslz
+	input_settings["binsupperignore"] = binsuz
+	input_settings["filmstart"] = recon_start
+	input_settings["filmstop"] = recon_stop
+	input_settings["filmstep"] = recon_step
+	input_settings['Bref'] = Bnom
+	input_settings['Bdot'] = Bdot
+	input_settings['VRF1ref'] = V_rf
+	input_settings['Rnom'] = Rnom
+	input_settings['rhonom'] = rho
+	input_settings['gammatnom'] = gamma_tr
+	input_settings['pickup'] = 1.0
+	input_settings['selffields'] = 0
+	write_inputfile(fname,descrip, datafile, input_settings)
+
+	temp_files = ['plotinfo.data','profiles.data','d001.data','d100.data','jmax.data','image001.data','image100.data']
+
+
+	#run tomography code
+	call(["tomo"])
+
+	files = os.listdir(os.curdir)
+	for fn in files:
+		if fn[-4:] == 'data':
+			os.rename(fn,tomo_outdir+"/"+fn)
+
+	return
 
