@@ -22,9 +22,7 @@ Qs_fn = lambda phi0, V0, h, beta, E0, eta: np.sqrt(np.abs(eta*np.cos(phi0)) * h*
 #dEbin 
 dEbin_fn = lambda phi0, V0, h, beta, E0, eta, dtbin, omega0: beta*np.sqrt(E0*V0*np.cos(phi0)/(2*math.pi*h*abs(eta)))*dtbin*omega0
 
-tofscale = lambda kindex,p0,p1,ke0,ke1,mass: ((ke1 + mass)/(ke0 + mass))*((p1/p0)**(-kindex/(kindex+1)))
-
-def read_scope(dirname, filename, tfactor=1):
+def read_scope(dirname, filename, multi_channel = False, tfactor=1):
 	"""Read scope data. The script deals with two specific scope formats - 
 	that used in November 2013, and in March 2014. The two are distinguished by looking
 	for the string DP04104 that appears in the later case"""
@@ -44,7 +42,7 @@ def read_scope(dirname, filename, tfactor=1):
 
 		if n == 0:
 			if lspl[1][:7] == 'DPO4104':
-				nskip = 17 + 1
+				nskip = 21
 				xi = 0
 				yi = 1
 			elif len(lspl) == 2:
@@ -56,18 +54,21 @@ def read_scope(dirname, filename, tfactor=1):
 				xi = 3
 				yi = 4
 
-
 		if n >= nskip:
 			if line !='\r\n':
+
 				tdat.append(tfactor*float(lspl[xi]))
-				ydat.append(float(lspl[yi]))
+
+				if multi_channel:
+					ydat.append([float(l) for l in lspl[yi:]])
+				else:
+					ydat.append(float(lspl[yi]))
 			else:
 				break
 
 		n += 1
 
 	f_data.close()
-
     
  	return tdat, ydat
 
@@ -772,7 +773,7 @@ def list_csv_files(path):
 
 	return csv_files
 
-def read_bmonitor_data(path):
+def read_bmonitor_data(path, multi_channel = False):
 	"""select and read bunch monitor data"""
 
 	csv_files = list_csv_files(path)
@@ -790,7 +791,7 @@ def read_bmonitor_data(path):
 		sys.exit()
 
 	fname_sig = csv_files[i_file_sel]
-	time_data, signal_data = read_scope(path, fname_sig)
+	time_data, signal_data = read_scope(path, fname_sig, multi_channel = multi_channel)
 
 	return time_data, signal_data, fname_sig
 
@@ -857,6 +858,9 @@ def read_phis_file_fn(path, fname_bm_sig=None):
 			else:
 				print "phis_file not found"
 				sys.exit()
+	else:
+		t_phis_file = [0]
+		phis_file = [0]
 
 	return t_phis_file, phis_file
 
@@ -881,14 +885,44 @@ def read_offset_time_fn(path, fname_bm_sig=None):
 		
 	return offset_file_ms
 
-def read_data_files(path, read_rf_waveform = True, read_phis_file = True, read_file_offset=True):
-	"""Read bunch monitor data and, if chosen, the rf waveform, phis file and time offset files"""
+def read_data_files(path, read_rf_waveform = True, read_phis_file = True, read_file_offset=True, multi_channel = False):
+	"""Read bunch monitor data and, if chosen, the rf waveform, phis file and time offset files
+	   If multi_channel = True, then more than one channel of data is read from the scope"""
 
-	time_data, signal_data, fname_sig = read_bmonitor_data(path)
+	if multi_channel:
+		time_data, waveform_data, fname_sig = read_bmonitor_data(path, multi_channel = True)
 
-	#read rf waveform
-	if read_rf_waveform:
-		tdat_rf, sig_rf  = read_rf_data(path, fname_bm_sig=fname_sig)
+		waveform_data = np.array(waveform_data)
+		waveform_data_tr = np.transpose(waveform_data)
+		
+		tdat_rf = time_data
+		sig_rf = waveform_data_tr[0]
+		signal_data = waveform_data_tr[1]
+		#print "waveform_data shape ",waveform_data.shape
+		#print "time step ",time_data[1] - time_data[0]
+
+		
+		#plt.subplot(211)
+		#plt.plot(time_data, waveform_data_tr[0],'k-')
+		#plt.subplot(212)
+		#plt.plot(time_data, waveform_data_tr[1],'r-')
+		#plt.show()
+
+		#plt.subplot(211)
+		#plt.plot(time_data, waveform_data_tr[0],'k-')
+		#plt.xlim(2e-4,2.1e-4)
+		#plt.subplot(212)
+		#plt.plot(time_data, waveform_data_tr[1],'r-')
+		#plt.xlim(2e-4,2.1e-4)
+		#plt.show()
+
+		#sys.exit()
+	else:
+		time_data, signal_data, fname_sig = read_bmonitor_data(path)
+
+		#read rf waveform
+		if read_rf_waveform:
+			tdat_rf, sig_rf  = read_rf_data(path, fname_bm_sig=fname_sig)
 
 	#read phis file which contains the phis settings for data
 	t_phis_file = None
@@ -995,18 +1029,21 @@ def time_offset_calc(path, ttime_a, t_phis_file, svk_data, fname_bm_sig, write_o
 	fzero_ideal = f_rf_lookup(0, svk_data=svk_data) #frequency at zero time in table
 	f_zero_ideal_MHz = 1e-6*fzero_ideal
 
-	#polynomial fit
+	#polynomial fit to frequency data
 	npfit = 3
 	nturns_fit = 2000
 	ffit_coef = np.polyfit(ttime_a[1:nturns_fit], freq_a[0:nturns_fit-1], npfit)
 	ffit = np.poly1d(ffit_coef)
+	#find offset between time where frequency reaches fzero_ideal and t=0
 	offset =  (fzero_ideal - ffit_coef[-1])/ffit_coef[npfit-1]
 	offset_ms = 1e3*offset
 	print "offset [ms]",offset_ms
 
+
 	if write_offset_file:
 
 		case_spl = fname_bm_sig.split("_")
+
 		case_num = case_spl[0]
 		print "case_spl ",case_spl
 		print "case_num ", case_num
@@ -1034,10 +1071,11 @@ def time_offset_calc(path, ttime_a, t_phis_file, svk_data, fname_bm_sig, write_o
 		plt.plot(t_rf_table, [1e-6*f_rf_lookup(t, svk_data=svk_data) for t in t_rf_table],'k-',label='lookup table')
 			
 		plt.plot(ttime_a[1:], freq_MHz_a, 'b.',label='RF data (1/ToF)')
-		plt.plot(ttime_a[:nturns_fit], 1e-6*ffit(ttime_a[:nturns_fit]),'r', label='data fit')
+		plt.plot(ttime_a[:nturns_fit], 1e-6*ffit(ttime_a[:nturns_fit]),'r', label='fit')
 
-		plt.axvline(x=ttime_a[i1], color='gray', linestyle='--')
-		plt.axvline(x=ttime_a[i1+2500], color='gray',linestyle='--')
+		plt.axhline(y=f_zero_ideal_MHz, color='gray',linestyle='--')
+		#plt.axvline(x=ttime_a[i1], color='gray', linestyle='--')
+		#plt.axvline(x=ttime_a[i1+2500], color='gray',linestyle='--')
 
 		plt.xlabel('time [s]')
 		plt.ylabel('frequency [MHz]')
@@ -1045,8 +1083,11 @@ def time_offset_calc(path, ttime_a, t_phis_file, svk_data, fname_bm_sig, write_o
 			
 		plt.legend()
 		plt.ylim(ymin = 1.575)
+		plt.title('offset (ms) '+str(offset_ms)[:5])
 		plt.savefig('frequency_offset')
 		plt.show()
+
+		sys.exit()
 	
 	return offset_ms
 
@@ -1403,20 +1444,28 @@ def mountain_range(data, nt, nslices, bucketlim_low=None, bucketlim_high=None, s
 
 
 
-def intensity_calc_fn(data, ttime_a, time_interval_ns, t_phis_file = None, write_intensity_file=False):
+def intensity_calc_fn(data, ttime_a, time_interval_ns, dirname, fname_sig, t_phis_file = None, write_intensity_file=False):
 	#calculate intensity and write to file
 	#intensity is calculated by integrating the signal turn-by-turn.
 	
+	show_fwhm = False
+
 	if write_intensity_file:
 		#construct offset file name
-		fspl = csv_files[i_file_sel].split("_")
+		if "case" in fname_sig:
+			fspl =  fname_sig.split("_")
+
+		else:
+			fspl =  fname_sig.split(".")
+
+
 		foffset = ''
 		for str1 in fspl[:-1]:
 			foffset = foffset + str1+"_"
-		offset_file = foffset + "intensity.txt"
-		print "intensity ",offset_file
-		
-		fi = file(dirname+offset_file,'w')
+		intensity_file = foffset + "intensity.txt"
+		print "intensity ",intensity_file
+
+		fi = file(dirname+intensity_file,'w')
 		#fi = open('intensity.txt','w')
 	
 	intensity_raw = []
@@ -1484,33 +1533,39 @@ def intensity_calc_fn(data, ttime_a, time_interval_ns, t_phis_file = None, write
 
 	print "time interval ",time_interval_ns
 	print "minimum FWHM ",min(fwhm_raw)*time_interval_ns
-	plt.subplot(211)
+
+	if show_fwhm:
+		plt.subplot(211)
+	else:
+		plt.xlabel('time [ms]')
+
 	plt.plot(1e3*ttime_a[:-1],intensity_raw,'k.')
 	plt.ylabel('intensity [nVs]')
 	
 	plt.ylim(ymin=0)
-	plt.xlim(t_imax_ms,1e3*ttime_a[-1])
+	#plt.xlim(t_imax_ms,1e3*ttime_a[-1])
 	
-	plt.axvline(x=t_imax_ms, color='m')
+	#plt.axvline(x=t_imax_ms, color='m')
 
 	if t_phis_file != None:
 		for t in t_phis_file:
 			if t != 0.0:
 				plt.axvline(x=t+t_imax_ms, color='r')
 
-	plt.subplot(212)
-	plt.plot(1e3*ttime_a[:-1],time_interval_ns*fwhm_raw_a,'k.')
-	plt.xlabel('time [ms]')
-	plt.ylabel('FWHM [nVs]')
-	plt.xlim(t_imax_ms,1e3*ttime_a[-1])
-	plt.ylim(ymin=0, ymax = 350)
+	if show_fwhm:
+		plt.subplot(212)
+		plt.plot(1e3*ttime_a[:-1],time_interval_ns*fwhm_raw_a,'k.')
+		
+		plt.ylabel('FWHM [nVs]')
+		#plt.xlim(t_imax_ms,1e3*ttime_a[-1])
+		plt.ylim(ymin=0, ymax = 350)
 
-	plt.axvline(x=t_imax_ms, color='m')
+		plt.axvline(x=t_imax_ms, color='m')
 
-	if t_phis_file != None:
-		for t in t_phis_file:
-			if t != 0.0:
-				plt.axvline(x=t+t_imax_ms, color='r')
+		if t_phis_file != None:
+			for t in t_phis_file:
+				if t != 0.0:
+					plt.axvline(x=t+t_imax_ms, color='r')
 
 	#plt.axvline(x=0.18)
 	plt.savefig('intensity')
@@ -1518,78 +1573,19 @@ def intensity_calc_fn(data, ttime_a, time_interval_ns, t_phis_file = None, write
 
 	sys.exit()
 
-def imshow_plot(data,extent,ylabel=None):
+def imshow_plot(data,extent,ylabel=None,xlabel=None):
 
-	plt.imshow(data, origin='lower', aspect='auto', extent = extent)
+	import matplotlib.cm as cm
+	plt.imshow(data, origin='lower', aspect='auto', extent = extent, cmap = cm.jet)
 
 	if ylabel != None:
-		plt.ylabel('time')
+		plt.ylabel(ylabel)
 
-	plt.xlabel('time bin')
+	if xlabel != None:
+		plt.xlabel(xlabel)
 	
 	plt.savefig('imshow_prof0')
 	plt.show()
-
-
-def accel_cycle(ncav_turn, t_phis_set, phis_set, V_turn_kV, ke_inj, tof_inj, kindex, mass, fix_ba = False):
-	""" ncav_turn: number of turns
-		
-		V_turn_kV: cavity voltage per turn
-		 """
-
-	ke_turn_mev_l = []
-	tof_l = []
-	beta_turn_l = []
-	ba_turn_l = []
-	V_turn_kV_l = []
-	phis_turn_l = []
-
-	E_inj = ke_inj + mass
-	p_inj = np.sqrt(E_inj**2 - mass**2)
-
-	tof_tot = 0
-	ke_turn = ke_inj
-	iset = 0
-	for iturn in range(ncav_turn):
-		
-		if len(phis_set) == 1:
-			phis_turn = phis_set[0]
-		else:
-			if phis_set[iset] == phis_set[iset+1]:
-				phis_turn = phis_set[iset]
-		
-		V_turn_kV_l.append(V_turn_kV)
-
-		#phis_turn = phis_set_rad[iturn]
-		#phis_turn_l.append(phis_turn*180/math.pi)
-		
-		deltaE_kV =  V_turn_kV*np.sin(phis_turn)
-		ke_turn = ke_turn + 1e3*deltaE_kV
-	
-		E_turn = ke_turn + PROTON_MASS
-		p_turn = np.sqrt(E_turn**2 - PROTON_MASS**2)
-		beta_turn = p_turn/E_turn
-
-		if beta_turn >= 1.0:
-			break
-			
-		beta_turn_l.append(beta_turn)
-	 	
-		tof_turn = tof_inj*tofscale(kindex, p_inj, p_turn, ke_inj, ke_turn, PROTON_MASS)
-		tof_tot = tof_tot + tof_turn
-		
-		omega_rev_turn = 2*math.pi/tof_turn
-
-		#ba_turn = ba(beta_turn,ke_turn,V_turn_kV*1e3,phis_turn,1e6*omega_rev_turn,harmonic,PROTON_MASS,kindex_nom)
-		#ba_turn_l.append(ba_turn)
-
-		if fix_ba:
-			V_turn_kV = 1e-3*v_from_ba(beta_turn,ke_turn,ba_inj,phis_turn,1e6*omega_rev_turn,harmonic,PROTON_MASS,kindex_nom)
-	
-		ke_turn_mev_l.append(1e-6*ke_turn)
-		tof_l.append(tof_tot)
-
-	return V_turn_kV_l, ke_turn_mev_l, ba_turn_l, tof_l
 
 
 def longitudinal_param(V_rf, phi_s, harmonic, alpha_c, rho, ke, tof, nslices, nturns, mass):
@@ -1741,7 +1737,6 @@ def filter_isolated_cells(array, struct):
 	
 	
 	return filtered_array
-
 
 
 def run_tomo_code(tomo_outdir, input_param):

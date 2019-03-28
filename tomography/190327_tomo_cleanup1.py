@@ -8,7 +8,7 @@ import math
 import matplotlib.animation as animation
 from subprocess import call
 from scipy.interpolate import griddata
-import tomo_defs_190311 as tdefs
+import tomo_defs_190327 as tdefs
 
 
 H_fn = lambda phi, dp, phi_s, a1, a2: a1*(dp**2) + a2*(np.cos(phi) - np.cos(phi_s) + (phi - phi_s)*np.sin(phi_s))
@@ -18,22 +18,30 @@ phi_s_deg = 0 #set synchronous phase
 V_rf = 4.0e3 # in [V]#2.7e3, 20/9 
 
 phi_s = phi_s_deg*math.pi/180
-flattop_time = 0.95e-3 #time at which energy stops increasing
+flattop_time = 2.0e-3 #time at which energy stops increasing
 
+#September 2018
+multi_channel = False
 #set data directory
-dirname = "../../data/2018/9/20/proc/"
-#dirname = "../../data/2018/9/20/machida-san_pattern/proc/"
+#time_offset_ms = None
+#dirname = "../data/2018/9/20/proc/"
+#dirname = "../data/2018/9/20/machida-san_pattern/proc/"
 #dirname = "../data/2018/9/21/machida_san_foil_escape/proc/"
 #dirname = "../data/2018/9/25/machida-san_2018_09_25/proc/"
 #dirname = "../data/2018/9/27/JB_2018_09_27/proc/"
 #dirname = "../data/2018/9/21/machida_san_foil_escape/" # "../data/2018/9/20/"
 
+#March&April 2019
+dirname = "../data/2019/3/28/"
+multi_channel = True
+time_offset_ms = 0.1143
+
 #Uesugi-san table containing constant phis=20 degree programme 
-svkfilepath = "svk20.dat"
+svkfilepath = "../sep18_exp/svk20.dat"
 
 show_data_switch = False #show raw bunch monitor and rf data
 show_mountain_range = False #show turn-by-turn data in mounntain range format
-show_imshow = False #show turn-by-turn data using pylab.imshow
+show_imshow = True #show turn-by-turn data using pylab.imshow
 
 read_rf_waveform = True #read RF data
 read_phis_file = True #read file containnig phis timings
@@ -53,7 +61,7 @@ nscan_param = 1 #number of synch point settings to check on either side of idela
 calc_rf_time_offset = False #special run to calculate offset of timebase from RF table time
 if calc_rf_time_offset:
 	tomo_times = np.array([-0.05e-3])
-	nturns_sort = 10000 #10000 for full intensity file
+	nturns_sort = 1000 #10000 for full intensity file
 
 	write_offset_file = False
 	plot_time_offset = True
@@ -64,15 +72,21 @@ if calc_rf_time_offset:
 	add_time_offset = False
 	read_file_offset = False
 else:
-	tomo_times = np.array([1.1e-3]) #this is with respect to offset if add_time_offset is True
-	read_file_offset = True
-	nturns_sort = 1000
+	tomo_times = np.array([-0.05e-3]) #this is with respect to offset if add_time_offset is True
+	
+	nturns_sort = 6000
 
-	intensity_calc = False
+	intensity_calc = True
+	write_intensity_file = True
+
 
 	write_offset_file = False
-	write_intensity_file = False
-	add_time_offset = True
+	
+
+	read_file_offset = False #set True for Sep 2018 data
+	add_time_offset = False
+
+
 
 PROTON_MASS = 938.27231e6 #938.27203e6
 SPEED_OF_LIGHT = 299792458
@@ -81,7 +95,7 @@ mass = PROTON_MASS
 specify_absolute_turns = True #if False, specify turns in terms of fraction of a sync. period
 if specify_absolute_turns:
 	turns_absolute = 100
-	recon_step = 50
+	recon_step = 10
 	recon_stop = turns_absolute
 else:
 	turns_syncfrac = 0.5 #fraction of synchrotron oscillation to include
@@ -121,7 +135,7 @@ else:
 #read the data
 interactive_data_sel = True
 if interactive_data_sel:
-	fname_sig, time_data, signal_data, tdat_rf, sig_rf, t_phis_file, phis_file, offset_file_ms = tdefs.read_data_files(dirname, read_rf_waveform = read_rf_waveform, read_file_offset = read_file_offset)
+	fname_sig, time_data, signal_data, tdat_rf, sig_rf, t_phis_file, phis_file, offset_file_ms = tdefs.read_data_files(dirname, read_rf_waveform = read_rf_waveform, read_file_offset = read_file_offset, multi_channel = multi_channel)
 
 #read svk file
 time_svk, ke_svk, rf_freq_svk = tdefs.read_svk_file(svkfilepath)
@@ -136,15 +150,18 @@ if npfac != 1:
 	sys.exit()
 
 if add_time_offset:
-	toffset_rf = 1e-3*offset_file_ms
+	if time_offset_ms == None:
+		time_offset_ms = 1e-3*offset_file_ms
 else:
-	toffset_rf = 0
+	time_offset_ms = 0
+
+time_offset = 1e-3*time_offset_ms
 
 #find time indices at tomo_times
 istart_guess_l = []
 for tt in tomo_times:
 	if add_time_offset:
-		tt = tt + toffset_rf
+		tt = tt + time_offset
 	i = 0
 	icrude = None
 	for t in time_data:
@@ -178,39 +195,24 @@ else:
 	print "offset_file_ms ",offset_file_ms
 
 
-print "t_phis_file ", t_phis_file
-
-
-ke_svk_file = True
-
 #calculate kinetic energy, beta, synchrotron period at each selected time
-if ke_svk_file:
-	if not flattop:
-		Ekin_a = np.array([ke_lookup(t, svkfilepath, toffset_rf) for t in tomo_times])
-	elif ke_svk_file:
-		ke_flattop = tdefs.ke_lookup(flattop_time, svkfilepath, toffset_rf)
-
-
-		Ekin_l = []
-		for t in tomo_times:
-			if t < flattop_time:
-				Ekin_l.append(ke_lookup(t, svkfilepath, toffset_rf))
-			else:
-				Ekin_l.append(ke_flattop)
-	
-		Ekin_a = np.array(Ekin_l)
+if not flattop:
+	Ekin_a = np.array([tdefs.ke_lookup(t, svkfilepath, time_offset) for t in tomo_times])
 else:
-	ke_inj = 11e6
-	tof_inj = 6.3180409734257291E-007
-	ncav_turn = 5000
-	V_turn_kV_l, ke_turn_mev_l, ba_turn_l, tof_l = tdefs.accel_cycle(ncav_turn, t_phis_file, phis_file, V_rf*1e-3, ke_inj, tof_inj, kindex, mass, fix_ba = False)
-	tof_ms_a = 1e3*np.array(tof_l)
+	ke_flattop = tdefs.ke_lookup(flattop_time, svkfilepath, time_offset)
 
-	plt.plot(tof_l, ke_turn_mev_l)
-	#for tp in t_phis_file:
-	#	plt.axvline(x=tp)
-	plt.show()
-	sys.exit()
+	print "ke_flattop ",ke_flattop
+
+	Ekin_l = []
+	for t in tomo_times:
+		if t < flattop_time:
+			Ekin_l.append(tdefs.ke_lookup(t, svkfilepath, time_offset))
+		else:
+			Ekin_l.append(ke_flattop)
+	
+	Ekin_a = np.array(Ekin_l)
+
+
 
 				
 #loop over times, do tomography on each loop
@@ -238,10 +240,11 @@ for index_time in range(len(tomo_times)):
 
 	#calculate delay in rf signal
 	if idelay == None:
+		print "calculate delay in signal"
 		prof_data_a = tdefs.sort_data(istart, time_data, signal_data, ttime_a, time_indices, nturns_sort, nslices, interpolate_data)
 		#sort data into turns covering roughly a synchrotron period
 		nt_Ts = int(round(Ts))
-		idelay = tdefs.calc_sync_point(prof_data_a, nt_Ts, sync_bin)
+		idelay = tdefs.calc_sync_point(prof_data_a, nt_Ts, sync_bin, show_sym_plots = True)
 
 	#introduce further delay for non-zero phi_s (assuming idelay applies to a stationary bucket)
 	if idelay != None and idelay_corr_phi_s:
@@ -262,14 +265,17 @@ for index_time in range(len(tomo_times)):
 		tdefs.mountain_range(prof_data_a, nturns_sort, nslices, bucketlim_low=bcktlim1, bucketlim_high=bcktlim2, sync_bin = sync_bin)			
 
 	if show_imshow:
-		tlim1 = 1e3*(ttime_a[0] - toffset_rf)
-		tlim2 = 1e3*(ttime_a[-2] - toffset_rf)
-		extent = [0, nslices, tlim1, tlim2]
-		tdefs.imshow_plot(prof_data_a,extent,ylabel='time')
-
+		tlim1 = 1e3*(ttime_a[0] - time_offset)
+		tlim2 = 1e3*(ttime_a[-2] - time_offset)
+		#extent = [0, nslices, tlim1, tlim2]
+		extent = [0, 360, tlim1, tlim2]
+		tdefs.imshow_plot(prof_data_a,extent,ylabel='time',xlabel='arbitrary phase [deg.]')
+		
+	print " ttime_a[0] ",ttime_a[0]
+	
 	if intensity_calc:
-		tdefs.intensity_calc_fn(prof_data_a, ttime_a, time_interval_ns, t_phis_file = t_phis_file)
-
+		tdefs.intensity_calc_fn(prof_data_a, ttime_a, time_interval_ns, dirname, fname_sig, t_phis_file = t_phis_file, write_intensity_file = write_intensity_file)
+		sys.exit()
 	
 	
 	t_turn_data_ns = 1e9*t_turn_data + tadj
@@ -309,7 +315,7 @@ for index_time in range(len(tomo_times)):
 		prof_data_norm_a =  np.transpose(np.transpose(prof_data_a)/prof_row_sum)
 
 		print "write ", nturns, " turns to file"
-		print "first, last time in ttime_a [ms] ",1e3*ttime_a[0] - offset_file_ms, 1e3*ttime_a[nturns] - offset_file_ms
+		print "first, last time in ttime_a [ms] ",1e3*ttime_a[0] - time_offset_ms, 1e3*ttime_a[nturns] -time_offset_ms
 		#sys.exit()
 
 		f1 = open('kurridata.txt', 'w')
