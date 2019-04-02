@@ -1345,9 +1345,6 @@ def sort_data(istart, time_data, signal_data, turn_times_a, time_indices, nturns
 		print "must interpolate data if npfac != 1"
 		sys.exit()
 
-
-	use_mean_tof = False
-
 	#interpolate onto time base Trev/nslices
 	t_dat_adj = []
 	for it in range(1, nturns+1):
@@ -1369,24 +1366,27 @@ def sort_data(istart, time_data, signal_data, turn_times_a, time_indices, nturns
 	t_dat_orig = np.array(time_data[istart:index_t_last])
 	sig_dat_orig = np.array(signal_data[istart:index_t_last])
 
-	
+
 	interpolate_data = True
 	if interpolate_data:
 		sig_interp = np.interp(t_dat_adj, t_dat_orig, sig_dat_orig)
 		sig_dat_split = np.split(sig_interp, nturns)
 	else:	
 		sig_dat_split = np.split(np.array(signal_data[istart:istart + nturns*nslices]), nturns)
-		
 
 
-		
-	it = 1
+			
+	
 	data_win_sig_sel = []
 	for data_win in sig_dat_split[:nturns]:
 		data_win_sig =  max(data_win) - np.array(data_win)
 		data_win_sig_sel.append(data_win_sig)
-		
-		it = it + 1*1
+
+	#tof = [turn_times_a[i] - turn_times_a[i-1] for i in range(1, len(turn_times_a))]
+	#plt.plot(tof)
+	#plt.show()
+	#sys.exit()
+	
 	
 	prof_data_a = np.array(data_win_sig_sel)	
 	
@@ -1394,7 +1394,9 @@ def sort_data(istart, time_data, signal_data, turn_times_a, time_indices, nturns
 
 
 
-def mountain_range(data, nt, nslices, bucketlim_low=None, bucketlim_high=None, sync_bin = None, incl_xaxis = False, xaxis = None, fmount='mountainrange'):
+def mountain_range(data, nt, nslices, bucketlim_low=None, bucketlim_high=None, sync_bin = None, incl_xaxis = False, xaxis = None, xlabel='time bin',fmount='mountainrange', extra_data = None):
+	"""Plot 2D data which has shape (nslices, nt) in mountain range style
+		extra_data - 1D data to superimpose on figure """
 
 	#nd = data.shape
 	nd = len(data)
@@ -1435,7 +1437,12 @@ def mountain_range(data, nt, nslices, bucketlim_low=None, bucketlim_high=None, s
 	if sync_bin != None:
 		plt.axvline(x=sync_bin, color='r', linestyle='--')
 
-	ax.set_xlabel('time bin')		
+	if extra_data != None:
+		for ex_data in extra_data:
+			plt.plot(ex_data, np.array(range(nt)))
+
+
+	ax.set_xlabel(xlabel)		
 	ax.set_ylabel('turn number')
 	plt.savefig(fmount)
 	plt.show()
@@ -1443,6 +1450,25 @@ def mountain_range(data, nt, nslices, bucketlim_low=None, bucketlim_high=None, s
 	return
 
 
+def imshow_plot(data,extent,ylabel=None,xlabel=None, extra_data = None):
+	import matplotlib.cm as cm
+
+	nt = data.shape[0]
+
+	plt.imshow(data, origin='lower', aspect='auto', extent = extent, cmap = cm.jet)
+
+	if ylabel != None:
+		plt.ylabel(ylabel)
+
+	if xlabel != None:
+		plt.xlabel(xlabel)
+
+	if extra_data != None:
+		for ex_data in extra_data:
+			plt.plot(ex_data, np.linspace(extent[2],extent[3],nt))
+	
+	plt.savefig('imshow_prof0')
+	plt.show()
 
 
 def intensity_calc_fn(data, phase_ax, ttime_a, time_interval_ns, dirname, fname_sig, t_phis_file = None, write_intensity_file=False):
@@ -1594,19 +1620,6 @@ def intensity_calc_fn(data, phase_ax, ttime_a, time_interval_ns, dirname, fname_
 
 	sys.exit()
 
-def imshow_plot(data,extent,ylabel=None,xlabel=None):
-
-	import matplotlib.cm as cm
-	plt.imshow(data, origin='lower', aspect='auto', extent = extent, cmap = cm.jet)
-
-	if ylabel != None:
-		plt.ylabel(ylabel)
-
-	if xlabel != None:
-		plt.xlabel(xlabel)
-	
-	plt.savefig('imshow_prof0')
-	plt.show()
 
 
 def longitudinal_param(V_rf, phi_s, harmonic, alpha_c, rho, ke, tof, nslices, nturns, mass):
@@ -1652,7 +1665,7 @@ def longitudinal_param(V_rf, phi_s, harmonic, alpha_c, rho, ke, tof, nslices, nt
 		phi_l2 = -math.pi
 	else:
 		phi_l1, phi_l2 = phase_extrema(phi_s)
-	print "phi_l1, phi_l2 ",phi_l1, phi_l2
+	print "phi_l1, phi_l2 [deg] ",phi_l1*180/math.pi, phi_l2*180/math.pi
 
 	if phi_l1 < phi_l2:
 		phi_lower = phi_l1
@@ -1671,14 +1684,18 @@ def longitudinal_param(V_rf, phi_s, harmonic, alpha_c, rho, ke, tof, nslices, nt
 
 	nslices_active = int(nslices*bucket_dur_ns/T_rf_ns) #number of slices in bucket
 	nslices_outb = nslices - nslices_active
+	print "phi_lower ",phi_lower*180/math.pi
 	print "bucket points, out-of-bucket points, bucket points/all points ",nslices_active, nslices_outb, nslices_active/nslices
 
 	if phi_s == 0:
 		binslz = 0
 		binsuz = 0
 	else:
-		binslz = nslices_outb#abs(int(nslices*phi_lower/(math.pi))) #nslices_outb
+		binslz = abs(int(nslices*(phi_lower+math.pi)/(2*math.pi)))# nslices_outb# #nslices_outb
 		binsuz =   nslices - (binslz + nslices_active)
+
+	print "binslz, binsuz ",binslz, binsuz
+	ph_ax = np.linspace(-180,180,nslices)
 
 	npts = 1000
 	a1 = 0.5*harmonic*omega_rf*eta
