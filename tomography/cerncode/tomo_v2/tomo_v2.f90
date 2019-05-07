@@ -252,7 +252,7 @@ PROGRAM tomo_v2
           call longtrack_self(direction,dturns,yp(1:k),xp(1:k),nowturn)
         ELSE
           call longtrack(direction,dturns,yp(1:k),xp(1:k),nowturn)
-        END IF          
+        END IF        
 !       calculate weight factors  
         iioffset=0      
         IILOOP:DO ii=imin(reconstruct_p),imax(reconstruct_p)
@@ -373,17 +373,19 @@ PROGRAM tomo_v2
 
 !   Calculate discrepancy for the last projection and write to file
     diffprofiles=profiles-project(phasespace)
-    darray(niter+1)=discrepancy(diffprofiles)
-    
-    write(6,*)"discrepancy " ,darray(niter+1)
+    darray(niter+1)=discrepancy(diffprofiles)  
     CALL out_array(darray,'d'//myext//'.data')
 !   Write final picture to file
     CALL out_picture(phasespace,&
          'image'//myext//'.data')
 
+	IF (FILM.EQ.FILMSTART) THEN
+      CALL out_profiles(project(phasespace),'profiles_recon.data')
+	ENDIF
+
     DEALLOCATE(diffprofiles,darray,phasespace)
 
-
+   
   END DO !film
 
   DEALLOCATE(yp,xp)
